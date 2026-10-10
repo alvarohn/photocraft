@@ -1141,6 +1141,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                     }
                     Tool::Lasso | Tool::PolygonLasso | Tool::MagneticLasso if t.pro => {
                         selection_mode_buttons(app, ui);
@@ -1168,6 +1169,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                         if crate::lasso_ui::active(app) || (app.ui.tool == Tool::PolygonLasso && !app.ui.polygon.is_empty()) {
                             hint(
                                 ui,
@@ -1205,6 +1207,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                     }
                     Tool::PaintBucket if t.pro => {
                         opt_label(ui, tl!("Fill"));
