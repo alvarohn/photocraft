@@ -46,6 +46,7 @@ mod control_server;
 mod crash_guard;
 mod cursor;
 mod file_dialog_probe;
+mod genai;
 mod gpu_startup;
 #[cfg(target_os = "linux")]
 mod icon_theme;
