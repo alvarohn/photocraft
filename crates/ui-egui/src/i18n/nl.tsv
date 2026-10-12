@@ -3803,3 +3803,5 @@ cameraData	Lens	Lens
 	Sends the same area and prompt to {name} again for three more.	Stuurt hetzelfde gebied en dezelfde beschrijving opnieuw naar {name} voor nog drie.
 	Generate More	Meer genereren
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Elk Generatief vullen maakt drie variaties en stuurt dus drie verzoeken, die elk op uw sleutel worden gefactureerd.
+	Apply mask to layer before removing?	Masker toepassen op laag voordat het wordt verwijderd?
+	The layer or its mask changed. Drag the mask onto the Trash again.	De laag of het masker is gewijzigd. Sleep het masker opnieuw naar de prullenbak.

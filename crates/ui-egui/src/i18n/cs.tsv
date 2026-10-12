@@ -3678,3 +3678,5 @@ navigator	Zoom	Zvětšení
 	Sends the same area and prompt to {name} again for three more.	Odešle stejnou oblast a popis znovu do {name} pro tři další.
 	Generate More	Generovat další
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Každá generativní výplň vytvoří tři varianty, takže odešle tři požadavky a každý se účtuje na váš klíč.
+	Apply mask to layer before removing?	Použít masku na vrstvu před odstraněním?
+	The layer or its mask changed. Drag the mask onto the Trash again.	Vrstva nebo její maska se změnila. Přetáhněte masku do koše znovu.

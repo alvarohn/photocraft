@@ -3046,3 +3046,5 @@ cameraData	Lens	Lensa
 	Sends the same area and prompt to {name} again for three more.	Mengirim area dan deskripsi yang sama ke {name} lagi untuk tiga lagi.
 	Generate More	Buat Lagi
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Setiap Isian generatif membuat tiga variasi, jadi mengirim tiga permintaan, masing-masing ditagihkan ke kunci Anda.
+	Apply mask to layer before removing?	Terapkan masker ke layer sebelum dihapus?
+	The layer or its mask changed. Drag the mask onto the Trash again.	Layer atau maskernya berubah. Seret masker ke Tempat Sampah lagi.

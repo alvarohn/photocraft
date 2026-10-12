@@ -3741,3 +3741,5 @@ cameraData	Lens	Φακός
 	Sends the same area and prompt to {name} again for three more.	Στέλνει ξανά την ίδια περιοχή και περιγραφή στο {name} για τρεις ακόμη.
 	Generate More	Δημιουργία περισσότερων
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Κάθε Παραγωγικό γέμισμα δημιουργεί τρεις παραλλαγές, άρα στέλνει τρία αιτήματα, το καθένα χρεώνεται στο κλειδί σας.
+	Apply mask to layer before removing?	Εφαρμογή της μάσκας στο επίπεδο πριν από την αφαίρεση;
+	The layer or its mask changed. Drag the mask onto the Trash again.	Το επίπεδο ή η μάσκα του άλλαξε. Σύρετε ξανά τη μάσκα στον Κάδο.

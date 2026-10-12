@@ -2713,3 +2713,5 @@ cameraData	Lens	Obiettivo
 	Sends the same area and prompt to {name} again for three more.	Invia di nuovo la stessa area e la stessa descrizione a {name} per altre tre.
 	Generate More	Genera altre
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Ogni Riempimento generativo crea tre varianti, quindi invia tre richieste, ognuna addebitata sulla tua chiave.
+	Apply mask to layer before removing?	Applicare la maschera al livello prima di rimuoverla?
+	The layer or its mask changed. Drag the mask onto the Trash again.	Il livello o la sua maschera è cambiato. Trascina di nuovo la maschera nel cestino.

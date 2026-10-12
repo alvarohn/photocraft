@@ -2631,3 +2631,5 @@ cameraData	Lens	鏡頭
 	Sends the same area and prompt to {name} again for three more.	再次將相同區域和描述傳送到 {name}，再產生三個。
 	Generate More	產生更多
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	每次生成式填色會產生三個變體，因此會傳送三個請求，每個都計費到你的金鑰。
+	Apply mask to layer before removing?	移除之前將遮色片套用到圖層嗎？
+	The layer or its mask changed. Drag the mask onto the Trash again.	圖層或其遮色片已變更。請再次將遮色片拖曳到垃圾桶。

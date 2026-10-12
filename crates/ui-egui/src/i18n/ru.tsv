@@ -2988,3 +2988,5 @@ cameraData	Lens	Объектив
 	Sends the same area and prompt to {name} again for three more.	Снова отправляет ту же область и описание в {name}, чтобы получить ещё три.
 	Generate More	Создать ещё
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Каждая Генеративная заливка создаёт три варианта, поэтому отправляет три запроса, каждый оплачивается по вашему ключу.
+	Apply mask to layer before removing?	Применить маску к слою перед удалением?
+	The layer or its mask changed. Drag the mask onto the Trash again.	Слой или его маска изменились. Перетащите маску в корзину ещё раз.

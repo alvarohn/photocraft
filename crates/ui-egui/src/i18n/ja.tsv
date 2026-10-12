@@ -3653,3 +3653,5 @@ cameraData	Lens	レンズ
 	Sends the same area and prompt to {name} again for three more.	同じ範囲と説明文を {name} にもう一度送り、さらに 3 つ生成します。
 	Generate More	さらに生成
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	生成塗りつぶしは毎回 3 つのバリエーションを作るため、3 回リクエストを送信し、それぞれがお使いのキーに課金されます。
+	Apply mask to layer before removing?	削除する前にマスクをレイヤーに適用しますか？
+	The layer or its mask changed. Drag the mask onto the Trash again.	レイヤーまたはそのマスクが変更されました。もう一度マスクをゴミ箱にドラッグしてください。

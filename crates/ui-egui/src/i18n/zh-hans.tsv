@@ -2661,3 +2661,5 @@ cameraData	Lens	镜头
 	Sends the same area and prompt to {name} again for three more.	再次将相同区域和描述发送到 {name}，再生成三个。
 	Generate More	生成更多
 	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	每次生成式填充会生成三个变体，因此会发送三个请求，每个都计费到你的密钥。
+	Apply mask to layer before removing?	移去之前将蒙版应用到图层吗？
+	The layer or its mask changed. Drag the mask onto the Trash again.	图层或其蒙版已更改。请再次将蒙版拖到垃圾桶。
