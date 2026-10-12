@@ -171,7 +171,9 @@ fn the_dialogs_render() {
     h.get_by_label("Remove Key");
     h.get_by_label("Get a Gemini API key from Google AI Studio");
     let dir = std::env::var_os("GENAI_SNAPSHOT_DIR");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-settings.png")).unwrap();
     }
     let id = settings_dialog(h.state()).unwrap();
@@ -181,7 +183,9 @@ fn the_dialogs_render() {
     crate::menus::invoke(h.state_mut(), &ctx, FILL, json!({})).unwrap();
     h.run_steps(6);
     h.get_by_label("Generate");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-prompt.png")).unwrap();
     }
     // The options bar of a selection tool: the button sits after Select and Mask….
@@ -190,7 +194,9 @@ fn the_dialogs_render() {
     h.state_mut().ui.tool = crate::state::Tool::RectMarquee;
     h.run_steps(6);
     h.get_by_label("Generative Fill…");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-options-bar.png")).unwrap();
     }
 }
@@ -226,7 +232,9 @@ fn properties_show_the_variations() {
     assert_eq!(shown(&h), [true, false, false]);
     h.get_by_label("Variations");
     h.get_by_label("Generate More");
-    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+    if let Some(dir) = std::env::var_os("GENAI_SNAPSHOT_DIR")
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(&dir).join("genai-variations.png")).unwrap();
     }
     // The Layers panel lists "Variation 3" too; the thumbnail is the one in Properties, above it.

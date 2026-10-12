@@ -15,16 +15,20 @@ fi
 msg="Merge the official PhotoCraft ($(git rev-parse --short=12 "$ref"))"
 
 # A line both sides added survives a union merge twice; the catalog tests reject duplicates.
+# Duplicates the official file already has are left alone, so the fork doesn't diverge from it.
 dedupe_translations() {
-  python3 - crates/ui-egui/src/i18n/*.tsv <<'PY'
-import sys
-for path in sys.argv[1:]:
+  python3 - "$ref" crates/ui-egui/src/i18n/*.tsv <<'PY'
+import collections, subprocess, sys
+ref = sys.argv[1]
+for path in sys.argv[2:]:
     with open(path, encoding="utf-8") as f:
         lines = f.read().split("\n")
+    official = subprocess.run(["git", "show", f"{ref}:{path}"], capture_output=True, text=True, encoding="utf-8").stdout
+    allowed = {l for l, n in collections.Counter(official.split("\n")).items() if n > 1}
     seen, out = set(), []
     for line in lines:
         # Entries without a context start with a tab; headers and comments stay as they are.
-        if line.startswith("\t") and line.count("\t") >= 2:
+        if line.startswith("\t") and line.count("\t") >= 2 and line not in allowed:
             if line in seen:
                 continue
             seen.add(line)
