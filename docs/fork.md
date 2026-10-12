@@ -42,7 +42,13 @@ Expected conflicts are resolved by the script:
 
 - Markdown docs take the official text;
 - `Cargo.lock` takes the official lockfile, then `cargo metadata` adds the fork's extra crates;
-- translation tables (`crates/ui-egui/src/i18n/*.tsv`) keep both sides (`.gitattributes`).
+- translation tables (`crates/ui-egui/src/i18n/*.tsv`) keep both sides (`.gitattributes`), and
+  lines both sides added identically are dropped once (duplicates the official file already has
+  stay);
+- Rust and TOML files where both sides only added lines at the same place (a new match arm in
+  `dialogs.rs`, a `mod` line) keep both (`scripts/fork/union-additions.py`, diff3 markers with an
+  empty base). The build that follows catches a union that doesn't compile, so nothing broken is
+  published.
 
 Any other conflict stops the run, opens an issue in the fork (if issues are enabled) and fails the
 workflow, so GitHub emails the owner. Fix it by merging `upstream/main` into `main` by hand,
