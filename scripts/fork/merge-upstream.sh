@@ -3,8 +3,10 @@
 #
 # Conflicts this fork expects are resolved here: Markdown docs (generated and prose) take the
 # official text, Cargo.lock takes the official lockfile and is re-resolved for the fork's extra
-# dependencies, and translation tables keep both sides (.gitattributes: merge=union). Any other
-# conflict aborts the merge, lists the files on stderr and exits 2, so a person can look.
+# dependencies, translation tables keep both sides (.gitattributes: merge=union), and code where
+# both sides only added lines at the same place keeps both (union-additions.py). Any other
+# conflict aborts the merge, lists the files on stderr and exits 2, so a person can look. The
+# workflow then builds the result, so a bad union fails the build instead of shipping.
 set -euo pipefail
 
 ref=${1:-upstream/main}
@@ -44,7 +46,8 @@ PY
   fi
 }
 
-if git merge --no-ff --no-edit -m "$msg" "$ref"; then
+here=$(cd "$(dirname "$0")" && pwd)
+if git -c merge.conflictStyle=diff3 merge --no-ff --no-edit -m "$msg" "$ref"; then
   dedupe_translations
   exit 0
 fi
@@ -58,6 +61,9 @@ while IFS= read -r f; do
       # Deleted upstream: follow it.
       if git checkout --theirs -- "$f" 2>/dev/null; then git add -- "$f"; else git rm -q -- "$f"; fi
       [ "$f" = Cargo.lock ] && lock=true
+      ;;
+    *.rs | *.toml)
+      if python3 "$here/union-additions.py" "$f"; then git add -- "$f"; else left+=("$f"); fi
       ;;
     *) left+=("$f") ;;
   esac
