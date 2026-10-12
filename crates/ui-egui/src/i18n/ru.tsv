@@ -2957,7 +2957,6 @@ cameraData	Lens	Объектив
 	Fill with {mode}-neutral color (black)	Залить нейтральным цветом режима «{mode}» (черный)
 	Fill with {mode}-neutral color (50% gray)	Залить нейтральным цветом режима «{mode}» (50% серого)
 	(No neutral color exists for {mode} mode.)	(Для режима «{mode}» нет нейтрального цвета.)
-	Swaps height and width	Меняет местами высоту и ширину
 # Generative Fill and Generative AI Settings (#41)
 	API key	Ключ API
 	Describe what to generate in the selection, or leave it empty to continue the image through it.	Опишите, что нужно создать в выделенной области, или оставьте поле пустым, чтобы изображение продолжилось сквозь неё.

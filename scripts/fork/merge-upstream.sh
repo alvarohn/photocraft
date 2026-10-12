@@ -13,7 +13,35 @@ if git merge-base --is-ancestor "$ref" HEAD; then
   exit 0
 fi
 msg="Merge the official PhotoCraft ($(git rev-parse --short=12 "$ref"))"
+
+# A line both sides added survives a union merge twice; the catalog tests reject duplicates.
+dedupe_translations() {
+  python3 - crates/ui-egui/src/i18n/*.tsv <<'PY'
+import sys
+for path in sys.argv[1:]:
+    with open(path, encoding="utf-8") as f:
+        lines = f.read().split("\n")
+    seen, out = set(), []
+    for line in lines:
+        # Entries without a context start with a tab; headers and comments stay as they are.
+        if line.startswith("\t") and line.count("\t") >= 2:
+            if line in seen:
+                continue
+            seen.add(line)
+        out.append(line)
+    if out != lines:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(out))
+        print(f"removed duplicate lines from {path}")
+PY
+  if ! git diff --quiet -- crates/ui-egui/src/i18n; then
+    git add crates/ui-egui/src/i18n
+    git commit -q -m "Drop translation lines both sides added"
+  fi
+}
+
 if git merge --no-ff --no-edit -m "$msg" "$ref"; then
+  dedupe_translations
   exit 0
 fi
 
@@ -43,4 +71,5 @@ if $lock; then
   git add Cargo.lock
 fi
 git commit --no-edit -q
+dedupe_translations
 echo "merged $ref"
