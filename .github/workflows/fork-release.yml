@@ -172,7 +172,8 @@ jobs:
         run: |
           ref=$(sed -n 's/.*craft-fonts-ref: *\([0-9a-f]*\).*/\1/p' src/.github/workflows/release.yml | head -1)
           if git clone --quiet https://github.com/storytold/craft-fonts craft-fonts && git -C craft-fonts checkout --quiet "${ref:-HEAD}"; then
-            echo "CRAFT_FONTS_DIR=$PWD/craft-fonts" >> "$GITHUB_ENV"
+            # A Windows path: cargo's build scripts don't understand Git Bash's /d/a/... form.
+            echo "CRAFT_FONTS_DIR=$(cygpath -w "$PWD/craft-fonts")" >> "$GITHUB_ENV"
           else
             echo "::warning::craft-fonts is not available; building without the optional fonts"
           fi
@@ -184,13 +185,15 @@ jobs:
 
       - name: Build the installer
         shell: pwsh
+        # package.ps1 runs cargo in the current directory, which must be the workspace.
+        working-directory: src
         env:
           PHOTOCRAFT_VERSION: ${{ needs.sync.outputs.version }}
           PHOTOCRAFT_FORK_REPO: ${{ github.repository }}
           PHOTOCRAFT_FORK_BUILD: ${{ needs.sync.outputs.id }}
         run: |
-          $env:DIST = Join-Path $PWD 'dist'
-          pwsh src/packaging/windows/package.ps1 -Arch x64
+          $env:DIST = Join-Path (Split-Path $PWD) 'dist'
+          pwsh packaging/windows/package.ps1 -Arch x64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Name the files after this build
