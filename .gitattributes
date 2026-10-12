@@ -1,0 +1,3 @@
+# Fork (alvarohn/photocraft): translation tables only ever gain lines on both sides, so a merge
+# with the official repository keeps both (scripts/fork/merge-upstream.sh, docs/fork.md).
+crates/ui-egui/src/i18n/*.tsv merge=union

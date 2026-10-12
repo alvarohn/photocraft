@@ -1,0 +1,300 @@
+# Fork only (alvarohn/photocraft): keeps a Windows build of the official PhotoCraft plus
+# Generative Fill, with its complete source code. See docs/fork.md.
+#
+# Every 6 hours: merge the official main branch into this fork's main (scripts/fork/
+# merge-upstream.sh) in the runner, and when the merged code differs from the last release,
+# test Generative Fill, build the Windows installer, pack the source code (git history plus every
+# dependency, for offline rebuilds) and publish a GitHub release. The app's updater
+# (apps/photocraft/src/fork_update.rs) offers that release to the user.
+#
+# The merge is not pushed: the default token can't push the official repository's workflow
+# changes. main keeps only the fork's own changes; every run merges the official code fresh.
+name: Fork release
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Publish a build even if nothing changed since the last release"
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: fork-release
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: storytold/photocraft
+  CARGO_TERM_COLOR: always
+
+jobs:
+  sync:
+    if: github.repository != 'storytold/photocraft'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      id: ${{ steps.decide.outputs.id }}
+      version: ${{ steps.decide.outputs.version }}
+      tree: ${{ steps.decide.outputs.tree }}
+      fork: ${{ steps.merge.outputs.fork }}
+      upstream: ${{ steps.merge.outputs.upstream }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Keep the official repository's workflows off in this fork
+        run: |
+          # GitHub turns off a fork's schedule after 60 days without commits; re-enabling keeps it.
+          gh workflow enable fork-release.yml || true
+          for f in .github/workflows/*.yml; do
+            name=$(basename "$f")
+            [ "$name" = fork-release.yml ] && continue
+            gh workflow disable "$name" 2>/dev/null && echo "disabled $name" || true
+          done
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Merge the official repository
+        id: merge
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "https://github.com/$UPSTREAM.git"
+          git fetch --no-tags upstream main
+          echo "fork=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "upstream=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+          set +e
+          bash scripts/fork/merge-upstream.sh upstream/main 2> merge-error.txt
+          status=$?
+          set -e
+          cat merge-error.txt >&2
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Ask for help when the merge needs a person
+        if: steps.merge.outputs.status != '0'
+        run: |
+          title="La integración automática con el PhotoCraft oficial necesita ayuda"
+          body=$(printf '%s\n\n```\n%s\n```\n\n%s\n' \
+            "No se pudo integrar automáticamente $UPSTREAM@${{ steps.merge.outputs.upstream }} con este fork. Hasta que se resuelva no se publican versiones nuevas (la instalada sigue funcionando)." \
+            "$(cat merge-error.txt)" \
+            "Para resolverlo: hacer merge de upstream/main en main resolviendo esos archivos (por ejemplo, pedírselo a Claude Code). Ejecución: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$num" ]; then gh issue comment "$num" --body "$body" || true; else gh issue create --title "$title" --body "$body" || true; fi
+          echo "::error::the merge with $UPSTREAM needs a person (see the log above)"
+          exit 1
+
+      - name: Decide whether to publish
+        id: decide
+        run: |
+          tree=$(git rev-parse 'HEAD^{tree}')
+          last=$( (gh release view --json body -q .body 2>/dev/null || true) | sed -n 's/^fork-tree: *//p' | head -1)
+          if [ "$tree" = "$last" ] && [ "${{ inputs.force }}" != "true" ]; then
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "The latest release already has this code."
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tree=$tree" >> "$GITHUB_OUTPUT"
+          echo "id=$(date -u +%Y%m%d.%H%M)-$(git rev-parse --short=7 upstream/main)" >> "$GITHUB_OUTPUT"
+          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.decide.outputs.build == 'true'
+        with:
+          key: fork-sync
+
+      - name: Test Generative Fill on the merged code
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          cargo test --locked -p photocraft-genai
+          cargo test --locked -p photocraft-engine --lib genai
+
+      - name: Bundle the merged code
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          git branch -f merged HEAD
+          git bundle create merged.bundle merged
+
+      - uses: actions/upload-artifact@v4
+        if: steps.decide.outputs.build == 'true'
+        with:
+          name: merged
+          path: merged.bundle
+          retention-days: 1
+
+      - name: Close the help request after a clean merge
+        if: steps.decide.outputs.build == 'true'
+        run: |
+          title="La integración automática con el PhotoCraft oficial necesita ayuda"
+          num=$(gh issue list --state open --search "in:title \"$title\"" --json number -q '.[0].number' 2>/dev/null || true)
+          if [ -n "$num" ]; then gh issue close "$num" --comment "Resuelto: la integración volvió a funcionar." || true; fi
+
+  windows:
+    needs: sync
+    if: needs.sync.outputs.build == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: merged
+
+      - name: Check out the merged code
+        run: git clone --branch merged merged.bundle src
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src
+          key: fork-windows-release
+
+      - name: Fonts (craft-fonts, optional)
+        run: |
+          ref=$(sed -n 's/.*craft-fonts-ref: *\([0-9a-f]*\).*/\1/p' src/.github/workflows/release.yml | head -1)
+          if git clone --quiet https://github.com/storytold/craft-fonts craft-fonts && git -C craft-fonts checkout --quiet "${ref:-HEAD}"; then
+            echo "CRAFT_FONTS_DIR=$PWD/craft-fonts" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts is not available; building without the optional fonts"
+          fi
+
+      - name: WiX
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
+
+      - name: Build the installer
+        shell: pwsh
+        env:
+          PHOTOCRAFT_VERSION: ${{ needs.sync.outputs.version }}
+          PHOTOCRAFT_FORK_REPO: ${{ github.repository }}
+          PHOTOCRAFT_FORK_BUILD: ${{ needs.sync.outputs.id }}
+        run: |
+          $env:DIST = Join-Path $PWD 'dist'
+          pwsh src/packaging/windows/package.ps1 -Arch x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Name the files after this build
+        run: |
+          mkdir out
+          v=${{ needs.sync.outputs.version }}
+          id=${{ needs.sync.outputs.id }}
+          for f in dist/*.msi dist/*-portable.zip; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            mv "$f" "out/${base/photocraft-$v-/photocraft-$v-gf.$id-}"
+          done
+          ls -la out
+          ls out/*.msi > /dev/null
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+          retention-days: 1
+
+  source:
+    needs: sync
+    if: needs.sync.outputs.build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: merged
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Pack the source code with every dependency
+        run: |
+          id=${{ needs.sync.outputs.id }}
+          root="photocraft-source-$id"
+          mkdir "$root"
+          git clone --quiet --branch merged merged.bundle "$root/photocraft"
+          cd "$root/photocraft"
+          git remote set-url origin "https://github.com/$UPSTREAM.git"
+          git remote add fork "https://github.com/${{ github.repository }}.git"
+          mkdir -p .cargo
+          cargo vendor --locked vendor > ../vendor-config.toml
+          { echo; echo "# Fork source pack: build offline from photocraft/vendor (COMO-COMPILAR.txt)."; cat ../vendor-config.toml; } >> .cargo/config.toml
+          rm ../vendor-config.toml
+          ref=$(sed -n 's/.*craft-fonts-ref: *\([0-9a-f]*\).*/\1/p' .github/workflows/release.yml | head -1)
+          cd ..
+          if git clone --quiet https://github.com/storytold/craft-fonts craft-fonts && git -C craft-fonts checkout --quiet "${ref:-HEAD}"; then
+            rm -rf craft-fonts/.git
+          else
+            rm -rf craft-fonts
+            echo "::warning::craft-fonts is not available; the source pack has no fonts folder"
+          fi
+          cp photocraft/scripts/fork/COMO-COMPILAR.txt .
+          printf 'Build %s\nPhotoCraft %s\nOfficial (%s): %s\nFork (%s): %s\nMerged tree: %s\nMade: %s\n' \
+            "$id" "${{ needs.sync.outputs.version }}" "$UPSTREAM" "${{ needs.sync.outputs.upstream }}" \
+            "${{ github.repository }}" "${{ needs.sync.outputs.fork }}" "${{ needs.sync.outputs.tree }}" \
+            "$(date -u +%Y-%m-%dT%H:%MZ)" > BUILD.txt
+          cd ..
+          zip -q -r -9 "$root.zip" "$root"
+          ls -la "$root.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source
+          path: photocraft-source-*.zip
+          retention-days: 1
+          compression-level: 0
+
+  release:
+    needs: [sync, windows, source]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Publish the release
+        run: |
+          id=${{ needs.sync.outputs.id }}
+          v=${{ needs.sync.outputs.version }}
+          when=$(echo "$id" | sed -E 's/^(....)(..)(..)\.(..)(..).*/\3\/\2\/\1 \4:\5 UTC/')
+          cd assets
+          rm -f merged.bundle
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          notes=$(printf '%s\n\n%s\n%s\n%s\n\n%s\n%s\n%s\n' \
+            "PhotoCraft $v (oficial, $UPSTREAM) con Relleno generativo (Gemini), armado el $when." \
+            "- Instalador: el archivo .msi (Windows 10/11, 64 bits). Windows avisa que es de un editor desconocido porque no está firmado: Más información → Ejecutar de todas formas." \
+            "- Código fuente completo para recompilar sin internet: photocraft-source-$id.zip (ver COMO-COMPILAR.txt adentro)." \
+            "- La app instalada avisa sola cuando hay una versión nueva." \
+            "upstream: ${{ needs.sync.outputs.upstream }}" \
+            "fork: ${{ needs.sync.outputs.fork }}" \
+            "fork-tree: ${{ needs.sync.outputs.tree }}")
+          gh release create "gf-$id" * --repo "$GITHUB_REPOSITORY" --target "${{ needs.sync.outputs.fork }}" \
+            --title "PhotoCraft $v + Relleno generativo ($when)" --notes "$notes" --latest
+
+      - name: Keep the newest 10 releases
+        run: |
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName,createdAt \
+            -q 'map(select(.tagName | startswith("gf-"))) | sort_by(.createdAt) | reverse | .[10:] | .[].tagName' |
+          while read -r tag; do
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          done

@@ -30,6 +30,7 @@ mod control_server;
 mod crash_guard;
 mod cursor;
 mod file_dialog_probe;
+mod fork_update;
 mod genai;
 mod gpu_startup;
 #[cfg(target_os = "macos")]
@@ -496,6 +497,8 @@ fn main() -> eframe::Result {
             if let Some(w) = &app_dirs::current().warning {
                 photocraft_ui_egui::notices::post(&mut app, "Portable mode is off", vec![w.clone()], false, None);
             }
+            // This fork's own builds: offer newer releases and keep their source code (docs/fork.md).
+            fork_update::start(&cc.egui_ctx);
             Ok(Box::new(app))
         }),
     );

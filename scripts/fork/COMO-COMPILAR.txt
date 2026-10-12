@@ -1,0 +1,51 @@
+PhotoCraft con Relleno generativo: código fuente completo
+=========================================================
+
+Esta carpeta alcanza para recompilar PhotoCraft en Windows sin internet, aunque desaparezcan
+los repositorios de GitHub (el oficial, storytold/photocraft, y el fork, alvarohn/photocraft).
+
+Qué hay acá
+-----------
+  photocraft\          El código, con todo el historial de git (photocraft\.git)
+                       y todas las dependencias de Rust ya descargadas (photocraft\vendor).
+  craft-fonts\         Las fuentes japonesas opcionales que usan las versiones oficiales
+                       (puede faltar si no se pudieron descargar; PhotoCraft anda igual).
+  COMO-COMPILAR.txt    Este archivo.
+  BUILD.txt            Qué versión es: commit del oficial, commit del fork y fecha.
+
+Lo que necesitás instalar una sola vez (esto sí requiere internet)
+------------------------------------------------------------------
+  1. Rust: https://rustup.rs  (rustup-init.exe). Cuando te ofrezca instalar
+     "Visual Studio Build Tools" con C++, aceptá. Entre Rust (~1,5 GB) y las Build Tools
+     (~6 GB) son unos 8 GB.
+  2. Para compilar hacen falta unos 10 GB más de espacio libre (la carpeta target\).
+
+Compilar
+--------
+  Abrí PowerShell en la carpeta photocraft y corré:
+
+      $env:CRAFT_FONTS_DIR = "$PWD\..\craft-fonts"     # opcional, solo si existe la carpeta
+      cargo build --release --offline -p photocraft --features heif
+
+  Tarda entre 15 y 60 minutos según la compu. El programa queda en:
+
+      target\release\photocraft.exe
+
+  --offline usa las dependencias de photocraft\vendor (lo configura photocraft\.cargo\config.toml),
+  así que no descarga nada.
+
+Armar el instalador .msi (opcional)
+-----------------------------------
+  Además de lo anterior hace falta WiX 5:
+      dotnet tool install --global wix --version 5.0.2
+      wix extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
+  y después, en la carpeta photocraft:
+      pwsh packaging\windows\package.ps1 -Arch x64
+
+Volver a publicar el código en otro lado
+----------------------------------------
+  El historial completo está en photocraft\.git. Para subirlo a otro servicio (GitLab,
+  Codeberg, otra cuenta de GitHub...):
+      cd photocraft
+      git remote add nuevo https://<servicio>/<usuario>/photocraft.git
+      git push nuevo --all
