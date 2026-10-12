@@ -47,6 +47,7 @@ mod frame_cmds;
 pub mod fx_view_cmds;
 pub mod fx_visibility_cmds;
 pub mod gallery_cmds;
+pub mod genai_cmds;
 pub mod gradient_fill_cmds;
 pub mod group_view_cmds;
 pub mod guide_layout;
@@ -402,6 +403,11 @@ pub struct Session {
     /// A finished live stroke offered to the `paint.stroke` / `paint.pencil` that commits it
     /// ([`Session::offer_live_stroke`]).
     pub(crate) live_commit: Option<brush_cmds::LiveCommit>,
+    /// The generative image provider the app configured (see [`genai_cmds`]); `None` keeps
+    /// generative commands off and the session network-free.
+    genai: Option<genai_cmds::SharedProvider>,
+    /// What each generative layer made in this session was generated from (see [`genai_cmds`]).
+    genai_sources: std::collections::HashMap<LayerId, std::sync::Arc<genai_cmds::Source>>,
 }
 
 /// Move item `i` of `v` to position `to`, clamped to the end. Returns where it went; `None` when

@@ -1083,6 +1083,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                     }
                     Tool::Lasso | Tool::PolygonLasso | Tool::MagneticLasso if t.pro => {
                         selection_mode_buttons(app, ui);
@@ -1110,6 +1111,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                         if crate::lasso_ui::active(app) || (app.ui.tool == Tool::PolygonLasso && !app.ui.polygon.is_empty()) {
                             hint(
                                 ui,
@@ -1147,6 +1149,7 @@ pub fn options_bar(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
                         if widgets::secondary_button(ui, tl!("Select and Mask…"), 0.0).clicked() {
                             let _ = crate::menus::invoke(app, ui.ctx(), "select.selectAndMask", json!({}));
                         }
+                        crate::genai_ui::options_bar_button(app, ui);
                     }
                     Tool::PaintBucket if t.pro => {
                         opt_label(ui, tl!("Fill"));
@@ -2924,7 +2927,8 @@ pub fn properties_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
     // Mask controls (pixel or vector) also belong here when their thumbnail is targeted.
     let mask_target = crate::mask_props_ui::targeted(app, layer);
     let vector_target = crate::mask_props_ui::vector_targeted(app, layer);
-    if !mask_target && !vector_target && !matches!(layer.content, LayerContent::Adjustment(_) | LayerContent::Fill(_)) {
+    let generative = app.session.generative_layer().is_some();
+    if !mask_target && !vector_target && !generative && !matches!(layer.content, LayerContent::Adjustment(_) | LayerContent::Fill(_)) {
         return;
     }
     let t = Tokens::get(ctx);
@@ -2989,6 +2993,9 @@ pub fn properties_window(app: &mut PhotocraftApp, ctx: &egui::Context) {
                     crate::mask_props_ui::properties(app, ui, layer);
                 } else if vector_target {
                     crate::mask_props_ui::vector_properties(app, ui, layer);
+                } else if generative {
+                    crate::genai_ui::variations_section(app, ui);
+                    layer_controls(app, ui, layer);
                 } else if let LayerContent::Adjustment(adj) = &layer.content {
                     adjustment_controls(app, ui, id, adj);
                 } else {
@@ -3101,6 +3108,8 @@ fn properties_body_inner(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         widgets::hairline(ui);
         ui.add_space(6.0);
     }
+    // A generative layer's variations, above its own sections.
+    crate::genai_ui::variations_section(app, ui);
     if let LayerContent::Adjustment(adj) = &layer.content {
         adjustment_controls(app, ui, id, adj);
     } else if layer.artboard().is_some() {

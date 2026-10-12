@@ -3195,3 +3195,34 @@ cameraData	Lens	렌즈
 	Fill with {mode}-neutral color (black)	{mode} 중립 색상으로 채우기(검정)
 	Fill with {mode}-neutral color (50% gray)	{mode} 중립 색상으로 채우기(50% 회색)
 	(No neutral color exists for {mode} mode.)	({mode} 모드에는 중립 색상이 없습니다.)
+# Generative Fill and Generative AI Settings (#41)
+	API key	API 키
+	Describe what to generate in the selection, or leave it empty to continue the image through it.	선택 영역에 생성할 내용을 설명하세요. 비워 두면 주변 이미지를 선택 영역 안으로 이어 그립니다.
+	Fill the selection from a prompt	설명으로 선택 영역 채우기
+	Generative AI	생성형 AI
+	Generative AI Settings…	생성형 AI 설정…
+	Generative AI needs the desktop app.	생성형 AI는 데스크톱 앱에서만 사용할 수 있습니다.
+	Generative Fill uses {name} ({model}).	생성형 채우기는 {name}({model})을(를) 사용합니다.
+	Generative Fill…	생성형 채우기…
+	Get a Gemini API key from Google AI Studio	Google AI Studio에서 Gemini API 키 받기
+	No API key is saved for {provider}.	{provider}에 저장된 API 키가 없습니다.
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	생성형 채우기를 실행하기 전에는 아무것도 전송되지 않습니다. 실행할 때마다 PhotoCraft는 선택 영역과 그 주변 이미지, 선택 영역의 흑백 마스크, 입력한 설명을 API 키와 함께 Google(generativelanguage.googleapis.com)로 보냅니다. Google Gemini API의 이용 약관과 개인정보처리방침이 적용되며, 사용 요금은 사용자의 키로 청구됩니다. 결과에는 Google의 SynthID 워터마크가 들어갑니다.
+	Off. Set up a provider with your own API key to use Generative Fill.	꺼져 있습니다. 생성형 채우기를 사용하려면 내 API 키로 제공업체를 설정하세요.
+	Paste your Gemini API key	Gemini API 키 붙여넣기
+	Prompt (optional)	설명(선택 사항)
+	Provider	제공업체
+	Remove Key	키 제거
+	Saved (paste to replace)	저장됨(붙여넣으면 교체)
+	Set up Generative Fill with your own API key	내 API 키로 생성형 채우기 설정
+	The selected area, the image around it and the prompt are sent to {name} ({model}).	선택 영역, 그 주변 이미지와 설명이 {name}({model})(으)로 전송됩니다.
+	What is sent, and to whom	전송되는 내용과 받는 곳
+	Your key is kept in {store}, never in PhotoCraft's settings files.	키는 {store}에 보관되며 PhotoCraft 설정 파일에는 저장되지 않습니다.
+	the macOS Keychain	macOS 키체인
+	Windows Credential Manager	Windows 자격 증명 관리자
+	memory until PhotoCraft quits	PhotoCraft를 종료할 때까지 메모리
+# Generative Fill variations (#41)
+	Variations	변형
+	No prompt: continues the image	설명 없음: 이미지를 이어 채움
+	Sends the same area and prompt to {name} again for three more.	같은 영역과 설명을 {name}에 다시 보내 세 개를 더 만듭니다.
+	Generate More	더 생성
+	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	생성형 채우기는 매번 변형 세 개를 만들므로 요청을 세 번 보내며, 각 요청은 사용자의 키로 청구됩니다.
