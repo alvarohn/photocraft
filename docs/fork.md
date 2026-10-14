@@ -16,6 +16,14 @@ repository doesn't have, so merging it stays easy.
   Gemini with your own API key (Preferences › Integrations › Generative AI Settings; get a key at
   https://aistudio.google.com/apikey). Off until you set it up; each fill sends three billed
   requests. Details: [generative-ai.md](generative-ai.md).
+- **Edit selection and reference images**, the fork's own additions to that Generative Fill
+  (2026-10-14; not in texjer's pull requests). The dialog has two tabs: *Fill selection* is
+  texjer's fill, unchanged (it blurs the selection out first, so an empty prompt removes what is
+  there); *Edit selection* sends the selection as it is and asks for only what the prompt says
+  to change (a colour, a text, a material), like Photoshop's Prompt to Edit. Either can take up
+  to 4 reference images, from files or open documents. These live in texjer's files
+  (`crates/genai`, `genai_cmds.rs`, `genai_ui.rs`), so a new push to those pull requests has to
+  be merged by hand.
 - **Automatic builds** (`.github/workflows/fork-release.yml`): every 6 hours GitHub Actions merges
   the official `main` into this fork's code (`scripts/fork/merge-upstream.sh`), and when the result
   changed since the last release it tests Generative Fill, builds the Windows installer and
