@@ -3869,3 +3869,49 @@ cameraData	Lens	Lens
 	Ink Characteristics	Mürekkep Özellikleri
 	Solidity:	Doluluk:
 	Redrawing	Yeniden çiziliyor
+
+# Generative Fill (#41, fork: texjer's pull requests plus Edit mode and reference images)
+	API key	API anahtarı
+	Describe what to generate in the selection, or leave it empty to continue the image through it.	Seçimde neyin oluşturulacağını açıklayın veya görüntünün seçimin içinden devam etmesi için boş bırakın.
+	Fill the selection from a prompt	Seçimi bir açıklamaya göre doldur
+	Generative AI	Üretken Yapay Zekâ
+	Generative AI Settings…	Üretken Yapay Zekâ Ayarları…
+	Generative AI needs the desktop app.	Üretken yapay zekâ için masaüstü uygulaması gerekir.
+	Generative Fill uses {name} ({model}).	Üretken Dolgu {name} ({model}) kullanıyor.
+	Generative Fill…	Üretken Dolgu…
+	Get a Gemini API key from Google AI Studio	Google AI Studio'dan bir Gemini API anahtarı alın
+	No API key is saved for {provider}.	{provider} için kayıtlı API anahtarı yok.
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	Üretken Dolgu'yu çalıştırana kadar hiçbir şey gönderilmez. Her çalıştırdığınızda PhotoCraft seçili alanı ve çevresindeki görüntüyü, seçimin siyah beyaz maskesini ve açıklamanızı API anahtarınızla birlikte Google'a (generativelanguage.googleapis.com) gönderir. Google'ın Gemini API koşulları ve gizlilik politikası geçerlidir ve kullanım anahtarınıza faturalandırılır. Sonuçlar Google'ın SynthID filigranını taşır.
+	Off. Set up a provider with your own API key to use Generative Fill.	Kapalı. Üretken Dolgu'yu kullanmak için kendi API anahtarınızla bir sağlayıcı ayarlayın.
+	Paste your Gemini API key	Gemini API anahtarınızı yapıştırın
+	Prompt (optional)	Açıklama (isteğe bağlı)
+	Provider	Sağlayıcı
+	Remove Key	Anahtarı Kaldır
+	Saved (paste to replace)	Kayıtlı (değiştirmek için yenisini yapıştırın)
+	Set up Generative Fill with your own API key	Üretken Dolgu'yu kendi API anahtarınızla ayarlayın
+	The selected area, the image around it and the prompt are sent to {name} ({model}).	Seçili alan, çevresindeki görüntü ve açıklama {name} ({model}) hizmetine gönderilir.
+	What is sent, and to whom	Ne gönderilir ve kime
+	Your key is kept in {store}, never in PhotoCraft's settings files.	Anahtarınız {store} içinde saklanır, asla PhotoCraft'ın ayar dosyalarında saklanmaz.
+	the macOS Keychain	macOS Anahtar Zinciri
+	Windows Credential Manager	Windows Kimlik Bilgisi Yöneticisi
+	memory until PhotoCraft quits	PhotoCraft kapanana kadar bellek
+	Variations	Varyasyonlar
+	No prompt: continues the image	Açıklama yok: görüntüyü sürdürür
+	Sends the same area and prompt to {name} again for three more.	Üç tane daha için aynı alanı ve açıklamayı yeniden {name} hizmetine gönderir.
+	Generate More	Daha Fazla Oluştur
+	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Her Üretken Dolgu üç varyasyon oluşturur; bu nedenle her biri anahtarınıza faturalandırılan üç istek gönderir.
+	Fill selection	Seçimi doldur
+	Edit selection	Seçimi düzenle
+	Generate new content in the selection, or remove what is there	Seçimde yeni içerik oluştur veya içindekini kaldır
+	Keep what is in the selection and change only what you ask for	Seçimdekini koru ve yalnızca istediğiniz kısmı değiştir
+	Describe what to change in the selection: what is there is kept, except what you ask to change (a colour, a text, a material).	Seçimde neyin değişeceğini açıklayın: istediğiniz değişiklik (renk, metin, malzeme) dışında içerik korunur.
+	What to change	Ne değişecek
+	Empty: removes what is selected and continues the image through it.	Boş: seçili içeriği kaldırır ve görüntüyü seçimin içinden sürdürür.
+	Empty: places what the reference images show in the selection.	Boş: referans görüntülerde görüneni seçime yerleştirir.
+	Reference images	Referans görüntüler
+	Optional: an object or product to show, or a design, colour or look to match.	İsteğe bağlı: gösterilecek bir nesne veya ürün ya da uyulacak bir tasarım, renk veya stil.
+	Add Reference…	Referans Ekle…
+	Image File…	Görüntü Dosyası…
+	Open Documents	Açık Belgeler
+	The reference images are sent too, at most 1024 pixels on their long side.	Referans görüntüler de gönderilir; uzun kenarları en fazla 1024 piksel olur.
+	In Edit mode the selected area is sent as it is. Reference images you add are sent too.	"Seçimi düzenle" modunda seçili alan olduğu gibi gönderilir. Eklediğiniz referans görüntüler de gönderilir.
