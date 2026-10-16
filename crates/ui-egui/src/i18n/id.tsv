@@ -3247,3 +3247,26 @@ curves	Smooth	Haluskan
 	This document's layers: {needed} of {budget} for layers	Layer dokumen ini: {needed} dari {budget} untuk layer
 	This document's layers need {needed} but may hold {budget}: whole-document redraws use the CPU	Layer dokumen ini membutuhkan {needed} tetapi boleh memakai {budget}: penggambaran ulang seluruh dokumen memakai CPU
 	GPU Memory (MB, 0 = Automatic)	Memori GPU (MB, 0 = Otomatis)
+# Generative Fill side by side: fills that don't wait for each other (this fork)
+	Cancel this Generative Fill	Batalkan isian generatif ini
+	Discard	Buang
+	Each area becomes its own Generative Fill and layer, generated side by side; each sends its own requests.	Setiap area menjadi isian generatif dan lapisan tersendiri, dibuat bersamaan; masing-masing mengirim permintaannya sendiri.
+	Failed: {name}	Gagal: {name}
+	Generated {name}	Selesai dibuat: {name}
+	Generating	Sedang membuat
+	Generating: {name}	Sedang membuat: {name}
+	Generative Fill	Isian generatif
+	Generative Fill failed: {error}	Isian generatif gagal: {error}
+	Generative Fills in progress	Isian generatif yang sedang berjalan
+	Go to area	Ke area
+	Locked until its layer lands	Terkunci sampai lapisannya tiba
+	No prompt: removes what is selected	Tanpa deskripsi: menghapus yang dipilih
+	The selection has {n} separate areas, too many to fill one by one (at most {max}): it is filled as one.	Seleksi memiliki {n} area terpisah, terlalu banyak untuk diisi satu per satu (paling banyak {max}): diisi sebagai satu kesatuan.
+	Waiting ({n})	Menunggu ({n})
+	Waiting: {name}	Menunggu: {name}
+	Retry	Coba lagi
+	Failed	Gagal
+@plural	{n} generating|{n} generating	{n} sedang dibuat
+@plural	{n} waiting|{n} waiting	{n} menunggu
+@plural	{n} failed|{n} failed	{n} gagal
+@plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Isi masing-masing dari {n} area terpisah secara tersendiri

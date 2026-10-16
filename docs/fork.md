@@ -24,6 +24,15 @@ repository doesn't have, so merging it stays easy.
   to 4 reference images, from files or open documents. These live in texjer's files
   (`crates/genai`, `genai_cmds.rs`, `genai_ui.rs`), so a new push to those pull requests has to
   be merged by hand.
+- **Fills side by side**, also the fork's own (2026-10-17): Generative Fill no longer holds the
+  window. Press Generate, select the next thing and start another while the first generates; up
+  to 5 talk to Google at once and the rest wait their turn. Each one shimmers over its area with
+  a tag (✕ cancels, ↻ retries one that failed), has a locked "Generating…" row in the Layers
+  panel where its layer will land, and is counted in the status bar (click for the list).
+  Several objects selected together can be filled each on its own from one prompt. It touches
+  official files in small places: `jobs.rs` (`run_on`, a job that doesn't lock its document),
+  and one-line hooks in `canvas.rs`, `panels.rs` (Layers rows, status bar) and `jobs_ui.rs`.
+  Details: [generative-ai.md](generative-ai.md).
 - **Automatic builds** (`.github/workflows/fork-release.yml`): every 6 hours GitHub Actions merges
   the official `main` into this fork's code (`scripts/fork/merge-upstream.sh`), and when the result
   changed since the last release it tests Generative Fill, builds the Windows installer and
@@ -34,6 +43,13 @@ repository doesn't have, so merging it stays easy.
     dependency vendored and the optional fonts, which rebuilds offline (`COMO-COMPILAR.txt` inside);
   - `SHA256SUMS.txt`.
   The newest 10 releases are kept.
+- **Test builds** (`.github/workflows/fork-test-build.yml`): every push to a `claude/…` or
+  `test/…` branch builds Windows from that branch and attaches the portable zip and the MSI to
+  the run (Actions › Fork test build › the run › Artifacts, kept 7 days). Nothing is published
+  and the installed app isn't offered it; the portable build keeps its settings beside
+  `photocraft.exe`, so it runs next to the installed one (set up Generative AI in it once: the
+  key saved by the installed app is already in the credential store). A way to try a change
+  before it goes to `main`.
 - **In-app updates** (`apps/photocraft/src/fork_update.rs`, Windows): at startup the app asks GitHub
   for the latest release. When it is newer, it offers to download it, saves its source pack, and
   starts the installer (closing PhotoCraft first, which asks about unsaved work). The source packs

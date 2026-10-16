@@ -1,0 +1,87 @@
+# This fork's test builds: a Windows build of a branch other than main, to try a change before it
+# reaches main (whose releases the installed app updates to). Nothing is published: the portable
+# zip (and the MSI) are artifacts of the run (Actions › this run › Artifacts), kept 7 days. The
+# portable build keeps its settings beside photocraft.exe and never offers updates, so it runs
+# next to the installed app without touching it.
+
+name: Fork test build
+
+on:
+  push:
+    branches: ["claude/**", "test/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fork-test-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    if: github.repository != 'storytold/photocraft'
+    runs-on: windows-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: fork-windows-test
+
+      - name: Fonts (craft-fonts, optional)
+        run: |
+          ref=$(sed -n 's/.*craft-fonts-ref: *\([0-9a-f]*\).*/\1/p' .github/workflows/release.yml | head -1)
+          if git clone --quiet https://github.com/storytold/craft-fonts ../craft-fonts && git -C ../craft-fonts checkout --quiet "${ref:-HEAD}"; then
+            # A Windows path: cargo's build scripts don't understand Git Bash's /d/a/... form.
+            echo "CRAFT_FONTS_DIR=$(cygpath -w "$(cd ../craft-fonts && pwd)")" >> "$GITHUB_ENV"
+          else
+            echo "::warning::craft-fonts is not available; building without the optional fonts"
+          fi
+
+      - name: Version
+        id: version
+        run: |
+          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "id=$(date -u +%Y%m%d.%H%M)-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: WiX
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2 WixToolset.Util.wixext/5.0.2
+
+      - name: Build
+        shell: pwsh
+        env:
+          PHOTOCRAFT_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $env:DIST = Join-Path $PWD 'dist'
+          pwsh packaging/windows/package.ps1 -Arch x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Name the files after this build
+        run: |
+          mkdir out
+          v=${{ steps.version.outputs.version }}
+          id=${{ steps.version.outputs.id }}
+          for f in dist/*.msi dist/*-portable.zip; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            mv "$f" "out/${base/photocraft-$v-/photocraft-$v-test.$id-}"
+          done
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photocraft-test-${{ steps.version.outputs.id }}-windows-x64
+          path: out/*
+          retention-days: 7

@@ -643,7 +643,6 @@ fn bad_references_fail_with_a_reason_and_send_nothing() {
     assert_eq!(fake.sent.lock().unwrap()[0].references.len(), 4);
 }
 
-
 // ---- This fork: fills that run side by side --------------------------------------------------
 
 fn slow(delay_ms: u64) -> Arc<Fake> {

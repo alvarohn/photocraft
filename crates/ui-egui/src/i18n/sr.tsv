@@ -4327,3 +4327,24 @@ shape	Appearance	Izgled
 	This document's layers: {needed} of {budget} for layers	Slojevi ovog dokumenta: {needed} od {budget} za slojeve
 	This document's layers need {needed} but may hold {budget}: whole-document redraws use the CPU	Slojevima ovog dokumenta treba {needed}, a smeju da zauzmu {budget}: ceo dokument se ponovo iscrtava na CPU-u
 	GPU Memory (MB, 0 = Automatic)	GPU memorija (MB, 0 = Automatski)
+# Generative Fill side by side: fills that don't wait for each other (this fork)
+	Cancel this Generative Fill	Otkaži ovu generativnu popunu
+	Discard	Odbaci
+	Each area becomes its own Generative Fill and layer, generated side by side; each sends its own requests.	Svaka oblast postaje zasebna generativna popuna sa svojim slojem, generišu se istovremeno; svaka šalje svoje zahteve.
+	Failed: {name}	Neuspešno: {name}
+	Generated {name}	Generisano: {name}
+	Generating	Generiše se
+	Generating: {name}	Generiše se: {name}
+	Generative Fill	Generativna popuna
+	Generative Fill failed: {error}	Generativna popuna nije uspela: {error}
+	Generative Fills in progress	Generativne popune u toku
+	Go to area	Idi na oblast
+	Locked until its layer lands	Zaključano dok ne stigne njen sloj
+	No prompt: removes what is selected	Bez opisa: uklanja izabrano
+	The selection has {n} separate areas, too many to fill one by one (at most {max}): it is filled as one.	Izbor ima {n} zasebnih oblasti, previše da bi se popunjavale jedna po jedna (najviše {max}): popunjava se kao celina.
+	Waiting ({n})	Čeka ({n})
+	Waiting: {name}	Čeka: {name}
+@plural	{n} generating|{n} generating	{n} se generiše|{n} se generišu|{n} se generiše
+@plural	{n} waiting|{n} waiting	{n} čeka|{n} čekaju|{n} čeka
+@plural	{n} failed|{n} failed	{n} neuspešna|{n} neuspešne|{n} neuspešnih
+@plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Popuni posebno svaku od {n} odvojenih oblasti|Popuni posebno svaku od {n} odvojenih oblasti|Popuni posebno svaku od {n} odvojenih oblasti

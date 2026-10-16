@@ -3740,3 +3740,26 @@ curves	Smooth	Làm mượt
 	This document's layers: {needed} of {budget} for layers	Các lớp của tài liệu này: {needed} trên {budget} dành cho lớp
 	This document's layers need {needed} but may hold {budget}: whole-document redraws use the CPU	Các lớp của tài liệu này cần {needed} nhưng chỉ được dùng {budget}: vẽ lại toàn bộ tài liệu dùng CPU
 	GPU Memory (MB, 0 = Automatic)	Bộ nhớ GPU (MB, 0 = Tự động)
+# Generative Fill side by side: fills that don't wait for each other (this fork)
+	Cancel this Generative Fill	Hủy lần tô tạo sinh này
+	Discard	Bỏ
+	Each area becomes its own Generative Fill and layer, generated side by side; each sends its own requests.	Mỗi vùng trở thành một lần tô tạo sinh và một lớp riêng, được tạo cùng lúc; mỗi vùng gửi yêu cầu riêng.
+	Failed: {name}	Thất bại: {name}
+	Generated {name}	Đã tạo: {name}
+	Generating	Đang tạo
+	Generating: {name}	Đang tạo: {name}
+	Generative Fill	Tô tạo sinh
+	Generative Fill failed: {error}	Tô tạo sinh thất bại: {error}
+	Generative Fills in progress	Các lần tô tạo sinh đang chạy
+	Go to area	Đến vùng
+	Locked until its layer lands	Bị khóa cho đến khi lớp của nó xuất hiện
+	No prompt: removes what is selected	Không có mô tả: xóa phần được chọn
+	The selection has {n} separate areas, too many to fill one by one (at most {max}): it is filled as one.	Vùng chọn có {n} vùng tách rời, quá nhiều để tô từng vùng (tối đa {max}): sẽ được tô như một vùng.
+	Waiting ({n})	Đang chờ ({n})
+	Waiting: {name}	Đang chờ: {name}
+	Retry	Thử lại
+	Failed	Thất bại
+@plural	{n} generating|{n} generating	{n} đang tạo
+@plural	{n} waiting|{n} waiting	{n} đang chờ
+@plural	{n} failed|{n} failed	{n} thất bại
+@plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Tô riêng từng vùng trong {n} vùng tách rời
