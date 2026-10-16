@@ -454,7 +454,7 @@ impl Layouter {
     }
 
     pub fn layout(&mut self, fonts: &mut FontDb, t: &TextLayer, dpi: f32) -> TextLayout {
-        let k = if dpi > 0.0 { dpi / 72.0 } else { 1.0 };
+        let k = if dpi.is_finite() && dpi > 0.0 { dpi / 72.0 } else { 1.0 };
         let runs = t.char_runs();
         let paras = t.paragraph_runs();
         let vertical = t.orientation == Orientation::Vertical;
@@ -585,6 +585,12 @@ impl Layouter {
                 let si0 = style_at(prange.start);
                 for p in style_props(&out.styles[si0], k, &fallback, si0 as u32, small_caps[si0]) {
                     b.push_default(p);
+                }
+                // Paragraph text breaks a word wider than the box at the box edge, as Photoshop
+                // does (#6694): parley's default only breaks at UAX #14 opportunities and lets the
+                // word run out of the box. Point text has no width to overflow.
+                if is_box {
+                    b.push_default(StyleProperty::OverflowWrap(parley::style::OverflowWrap::BreakWord));
                 }
                 for (ri, st) in out.styles.iter().enumerate() {
                     let rs = run_starts[ri];

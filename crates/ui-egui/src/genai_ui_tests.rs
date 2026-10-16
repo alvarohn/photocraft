@@ -71,6 +71,14 @@ fn settings_dialog(app: &PhotocraftApp) -> Option<u64> {
 }
 
 #[test]
+fn the_settings_command_is_a_shell_command() {
+    // The shell's command table lives in the engine (`shell_commands::SHELL_COMMANDS`), which
+    // spells the id out; this keeps it equal to `SETTINGS`.
+    assert!(crate::menus::UI_COMMANDS.iter().any(|c| c.0 == SETTINGS && c.1 == "Generative AI Settings…"));
+    assert!(crate::menus::is_live(SETTINGS));
+}
+
+#[test]
 fn off_by_default_with_no_menu_item_and_no_key_read() {
     let store = Store::default();
     let app = app_with(&store);
