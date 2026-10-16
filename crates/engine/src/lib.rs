@@ -505,8 +505,9 @@ pub struct Session {
     /// The generative image provider the app configured (see [`genai_cmds`]); `None` keeps
     /// generative commands off and the session network-free.
     genai: Option<genai_cmds::SharedProvider>,
-    /// What each generative layer made in this session was generated from (see [`genai_cmds`]).
-    genai_sources: std::collections::HashMap<LayerId, std::sync::Arc<genai_cmds::Source>>,
+    /// What each generative layer made in this session was generated from, and the fills still
+    /// running (see [`genai_cmds`]).
+    genai_state: genai_cmds::GenState,
     /// Documents a background open decoded but held back until the user answers the profile
     /// prompt ([`ColorState::open_question`](color_cmds::ColorState::open_question)): `(id,
     /// document, source read-only)`. The shell takes them with [`Session::take_held_open`].
