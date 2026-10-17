@@ -1,4 +1,4 @@
-//! Generative Fills that haven't landed (this fork). Nothing waits for them: while one generates
+//! Generative Fills that haven't landed. Nothing waits for them: while one generates
 //! the user selects the next area and starts another. Each one shows
 //! - on the canvas: its area under a moving shimmer, with a running outline and a tag (generating,
 //!   waiting its turn or failed, how long it has taken, Cancel, and Retry once it failed);

@@ -14,7 +14,8 @@ struct Fake {
     flaky: bool,
     /// How long each call takes.
     delay: std::time::Duration,
-    /// Answer with the image sent, every channel moved by this much (a model's colour drift).
+    /// Answer with the image sent, the masked placeholder replaced by the average colour around
+    /// it as a model would, every channel moved by this much (a model's colour drift).
     echo: Option<i16>,
     calls: AtomicUsize,
     size: Option<(u32, u32)>,
@@ -77,7 +78,25 @@ impl ImageProvider for Fake {
         }
         if let Some(d) = self.echo {
             let img = codecs::decode(&r.image).unwrap().convert(ChannelLayout::Rgba, CodecSample::U8);
-            let px: Vec<u8> = img.data().iter().enumerate().map(|(i, &v)| if i % 4 == 3 { v } else { (i16::from(v) + d).clamp(0, 255) as u8 }).collect();
+            let mask = codecs::decode(&r.mask).unwrap().convert(ChannelLayout::Rgba, CodecSample::U8);
+            let masked = |i: usize| mask.data()[i / 4 * 4] > 127;
+            let (mut sum, mut n) = ([0u64; 3], 0u64);
+            for (i, px) in img.data().as_chunks::<4>().0.iter().enumerate() {
+                if !masked(i * 4) {
+                    (0..3).for_each(|c| sum[c] += u64::from(px[c]));
+                    n += 1;
+                }
+            }
+            let around = sum.map(|v| (v / n.max(1)) as u8);
+            let px: Vec<u8> = img
+                .data()
+                .iter()
+                .enumerate()
+                .map(|(i, &v)| match i % 4 {
+                    3 => v,
+                    c => (i16::from(if masked(i) { around[c] } else { v }) + d).clamp(0, 255) as u8,
+                })
+                .collect();
             let out = Image::from_u8(img.width(), img.height(), ChannelLayout::Rgba, px).unwrap();
             return Ok(GeneratedImage { bytes: codecs::encode(&out, Format::Png, &Default::default()).unwrap(), mime: "image/png".into() });
         }
@@ -232,15 +251,16 @@ fn the_document_keeps_its_mode_and_depth() {
 fn the_context_area_grows_toward_the_providers_shape_inside_the_canvas() {
     let canvas = Rect::from_xywh(0, 0, 1000, 600);
     let same = |w, h| (w, h);
-    // A 100² selection gets a 64 px margin on every side.
-    assert_eq!(context_area(Rect::from_xywh(400, 200, 100, 100), canvas, same), Rect::new(336, 136, 564, 364));
+    // A 30² selection gets the 64 px minimum margin on every side, a 100² one twice its size.
+    assert_eq!(context_area(Rect::from_xywh(400, 200, 30, 30), canvas, same), Rect::new(336, 136, 494, 294));
+    assert_eq!(context_area(Rect::from_xywh(400, 200, 100, 100), canvas, same), Rect::new(200, 0, 700, 500));
     // At an edge the margin is cut off by the canvas.
-    assert_eq!(context_area(Rect::from_xywh(0, 0, 100, 100), canvas, same), Rect::new(0, 0, 164, 164));
+    assert_eq!(context_area(Rect::from_xywh(0, 0, 100, 100), canvas, same), Rect::new(0, 0, 300, 300));
     // A provider that only makes 16:9 widens the area around its centre.
-    let r = context_area(Rect::from_xywh(400, 200, 100, 100), canvas, |_, _| (16, 9));
-    assert_eq!(r.height(), 228);
+    let r = context_area(Rect::from_xywh(400, 200, 30, 30), canvas, |_, _| (16, 9));
+    assert_eq!(r.height(), 158);
     assert!((f64::from(r.width()) / f64::from(r.height()) - 16.0 / 9.0).abs() < 0.01, "{r:?}");
-    assert_eq!(r.x0 + r.x1, 336 + 564, "centred");
+    assert!((r.x0 + r.x1 - (336 + 494)).abs() <= 1, "centred: {r:?}");
     // Against the canvas edge it shifts inward instead of leaving the canvas.
     let r = context_area(Rect::from_xywh(0, 0, 100, 100), canvas, |_, _| (16, 9));
     assert_eq!(r.x0, 0);
@@ -381,7 +401,7 @@ fn a_failed_variation_is_dropped_when_others_succeed() {
 #[test]
 fn the_selected_pixels_are_never_sent() {
     // A red square under the selection on white: the provider sees the white around it carried
-    // in (no red, and no flat grey it might read as an object), and the surroundings as they are.
+    // in, dimmed (no red), and the surroundings as they are.
     let mut s = session(120, 120);
     s.execute("select.rect", json!({"x": 40, "y": 40, "width": 40, "height": 40})).unwrap();
     s.execute("edit.fill", json!({"color": "#ff0000"})).unwrap();
@@ -396,7 +416,8 @@ fn the_selected_pixels_are_never_sent() {
         [img.data()[i], img.data()[i + 1], img.data()[i + 2]]
     };
     for (x, y) in [(60, 60), (41, 41), (79, 60)] {
-        assert!(at(x, y).iter().all(|&c| c >= 250), "({x},{y}) {:?}: filled from the white around it", at(x, y));
+        let [r, g, b] = at(x, y);
+        assert!(r == g && g == b && (80..=100).contains(&r), "({x},{y}) {:?}: the white around it, dimmed", at(x, y));
     }
     assert_eq!(at(30, 30), [255, 255, 255], "the context is sent as it is");
 }
@@ -643,7 +664,7 @@ fn bad_references_fail_with_a_reason_and_send_nothing() {
     assert_eq!(fake.sent.lock().unwrap()[0].references.len(), 4);
 }
 
-// ---- This fork: fills that run side by side --------------------------------------------------
+// ---- Fills that run side by side --------------------------------------------------------------
 
 fn slow(delay_ms: u64) -> Arc<Fake> {
     Arc::new(Fake { delay: std::time::Duration::from_millis(delay_ms), ..Arc::into_inner(Fake::new([255, 0, 0])).unwrap() })

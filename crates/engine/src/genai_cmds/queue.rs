@@ -1,4 +1,4 @@
-//! Generative Fill's turns at the provider (this fork): at most [`MAX_PARALLEL`] fills (and
+//! Generative Fill's turns at the provider: at most [`MAX_PARALLEL`] fills (and
 //! Generate More requests) talk to it at once; the others wait in the order they were started.
 //! A request the service turns down for its rate limit is sent again after a pause.
 

@@ -15,15 +15,15 @@ repository doesn't have, so merging it stays easy.
   appear there (or nothing, to remove what is there), pick one of three variations. It uses Google
   Gemini with your own API key (Preferences › Integrations › Generative AI Settings; get a key at
   https://aistudio.google.com/apikey). Off until you set it up; each fill sends three billed
-  requests. Details: [generative-ai.md](generative-ai.md).
+  requests. Details: [generative-ai.md](generative-ai.md). It follows #3703 as texjer last pushed
+  it (`eb79ea0`, 2026-10-16: twice the selection's size of context around it and a dimmed
+  placeholder, so fills follow the picture; Gemini's message when its credit runs out).
 - **Edit selection and reference images**, the fork's own additions to that Generative Fill
   (2026-10-14; not in texjer's pull requests). The dialog has two tabs: *Fill selection* is
   texjer's fill, unchanged (it blurs the selection out first, so an empty prompt removes what is
   there); *Edit selection* sends the selection as it is and asks for only what the prompt says
   to change (a colour, a text, a material), like Photoshop's Prompt to Edit. Either can take up
-  to 4 reference images, from files or open documents. These live in texjer's files
-  (`crates/genai`, `genai_cmds.rs`, `genai_ui.rs`), so a new push to those pull requests has to
-  be merged by hand.
+  to 4 reference images, from files or open documents.
 - **Fills side by side**, also the fork's own (2026-10-17): Generative Fill no longer holds the
   window. Press Generate, select the next thing and start another while the first generates; up
   to 5 talk to Google at once and the rest wait their turn. Each one shimmers over its area with
@@ -56,6 +56,21 @@ repository doesn't have, so merging it stays easy.
   of the running build and of every update go to `Documents\PhotoCraft\codigo-fuente`, newest 3
   kept. Only builds made by the workflow (which sets `PHOTOCRAFT_FORK_REPO` and
   `PHOTOCRAFT_FORK_BUILD`) do this; set `PHOTOCRAFT_NO_UPDATE_CHECK=1` to skip it.
+
+## texjer's pull request and the `genai/side-by-side` branch
+
+The fork's Generative Fill work lives in texjer's files (`crates/genai`, `genai_cmds.rs`,
+`genai_ui.rs`), so it is kept as a branch texjer can take as it is: `genai/side-by-side` is his
+#3703 head, the official `main` merged into it (which clears that pull request's conflicts), and
+the fork's commits on top (Edit selection and reference images; fills side by side), with none of
+the fork's own files. `main` is that branch merged in, plus the fork's own files (these docs, the
+workflows, `scripts/fork/`, `fork_update.rs` and its two lines in `apps/photocraft/src/main.rs`).
+
+When texjer pushes again: start a branch from his new head, merge `upstream/main`, cherry-pick the
+fork's Generative Fill commits from `genai/side-by-side` (resolving them against his changes),
+test, and make that the new `genai/side-by-side`; then merge it into `main` keeping its tree plus
+the fork's own files (`git merge -s ours --no-commit`, `git checkout <branch> -- .`, restore
+`main.rs`). The automatic merge below doesn't do this: it only follows the official `main`.
 
 ## Merging the official repository
 

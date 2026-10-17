@@ -71,14 +71,6 @@ fn settings_dialog(app: &PhotocraftApp) -> Option<u64> {
 }
 
 #[test]
-fn the_settings_command_is_a_shell_command() {
-    // The shell's command table lives in the engine (`shell_commands::SHELL_COMMANDS`), which
-    // spells the id out; this keeps it equal to `SETTINGS`.
-    assert!(crate::menus::UI_COMMANDS.iter().any(|c| c.0 == SETTINGS && c.1 == "Generative AI Settings…"));
-    assert!(crate::menus::is_live(SETTINGS));
-}
-
-#[test]
 fn off_by_default_with_no_menu_item_and_no_key_read() {
     let store = Store::default();
     let app = app_with(&store);
@@ -276,9 +268,7 @@ fn the_dialogs_render() {
     h.get_by_label("Remove Key");
     h.get_by_label("Get a Gemini API key from Google AI Studio");
     let dir = std::env::var_os("GENAI_SNAPSHOT_DIR");
-    if let Some(dir) = &dir
-        && let Ok(img) = h.render()
-    {
+    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-settings.png")).unwrap();
     }
     let id = settings_dialog(h.state()).unwrap();
@@ -290,9 +280,7 @@ fn the_dialogs_render() {
     h.get_by_label("Generate");
     h.get_by_label("Fill selection");
     h.get_by_label("Add Reference…");
-    if let Some(dir) = &dir
-        && let Ok(img) = h.render()
-    {
+    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-prompt.png")).unwrap();
     }
     // Edit, with the document itself as a reference.
@@ -329,9 +317,7 @@ fn the_dialogs_render() {
     h.state_mut().ui.tool = crate::state::Tool::RectMarquee;
     h.run_steps(6);
     h.get_by_label("Generative Fill…");
-    if let Some(dir) = &dir
-        && let Ok(img) = h.render()
-    {
+    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-options-bar.png")).unwrap();
     }
 }
@@ -367,9 +353,7 @@ fn properties_show_the_variations() {
     assert_eq!(shown(&h), [true, false, false]);
     h.get_by_label("Variations");
     h.get_by_label("Generate More");
-    if let Some(dir) = std::env::var_os("GENAI_SNAPSHOT_DIR")
-        && let Ok(img) = h.render()
-    {
+    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
         img.save(std::path::Path::new(&dir).join("genai-variations.png")).unwrap();
     }
     // The Layers panel lists "Variation 3" too; the thumbnail is the one in Properties, above it.
@@ -388,7 +372,7 @@ fn properties_show_the_variations() {
     assert_eq!(shown(&h), [false, false, false, true, false, false]);
 }
 
-// ---- This fork: fills that run side by side --------------------------------------------------
+// ---- Fills that run side by side --------------------------------------------------------------
 
 /// Answers after `delay` with solid blue, or (with `fail`) says the service can't be reached.
 struct Slow {

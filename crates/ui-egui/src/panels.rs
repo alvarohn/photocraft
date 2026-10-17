@@ -2392,7 +2392,7 @@ fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             // The drawn rows, top to bottom (#1721): the space between them and below the last
             // one is a drop zone too.
             let mut drawn: Vec<(LayerId, Rect)> = Vec::new();
-            // This fork: where Generative Fills still generating will land.
+            // Where Generative Fills still generating will land.
             crate::genai_ui::layer_rows_unplaced(app, ui, doc.id, &rows);
             for &(depth, l) in &rows {
                 // Select › Isolate Layers.

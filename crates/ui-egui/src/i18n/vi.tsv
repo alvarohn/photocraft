@@ -3640,52 +3640,6 @@ curves	Smooth	Làm mượt
 	Sent to {printer}	Đã gửi tới {printer}
 	set in Print Settings…	đặt trong thiết lập in…
 	ICO is limited to 256 × 256 pixels	ICO giới hạn ở 256 × 256 pixel
-
-# Generative Fill (#41, fork: texjer's pull requests plus Edit mode and reference images)
-	API key	Khóa API
-	Describe what to generate in the selection, or leave it empty to continue the image through it.	Mô tả nội dung cần tạo trong vùng chọn, hoặc để trống để hình ảnh được tiếp nối qua vùng chọn.
-	Fill the selection from a prompt	Tô vùng chọn theo mô tả
-	Generative AI	AI tạo sinh
-	Generative AI Settings…	Cài đặt AI tạo sinh…
-	Generative AI needs the desktop app.	AI tạo sinh cần ứng dụng máy tính.
-	Generative Fill uses {name} ({model}).	Tô tạo sinh đang dùng {name} ({model}).
-	Generative Fill…	Tô tạo sinh…
-	Get a Gemini API key from Google AI Studio	Lấy khóa API Gemini từ Google AI Studio
-	No API key is saved for {provider}.	Chưa lưu khóa API nào cho {provider}.
-	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	Không có gì được gửi đi cho đến khi bạn chạy Tô tạo sinh. Mỗi lần chạy, PhotoCraft gửi vùng được chọn và phần hình ảnh xung quanh, một mặt nạ đen trắng của vùng chọn và mô tả của bạn đến Google (generativelanguage.googleapis.com) cùng với khóa API của bạn. Điều khoản và chính sách quyền riêng tư của Gemini API của Google được áp dụng, và mức sử dụng được tính phí vào khóa của bạn. Kết quả có hình mờ SynthID của Google.
-	Off. Set up a provider with your own API key to use Generative Fill.	Đang tắt. Hãy thiết lập một nhà cung cấp bằng khóa API của riêng bạn để dùng Tô tạo sinh.
-	Paste your Gemini API key	Dán khóa API Gemini của bạn
-	Prompt (optional)	Mô tả (không bắt buộc)
-	Provider	Nhà cung cấp
-	Remove Key	Xóa khóa
-	Saved (paste to replace)	Đã lưu (dán khóa khác để thay thế)
-	Set up Generative Fill with your own API key	Thiết lập Tô tạo sinh bằng khóa API của riêng bạn
-	The selected area, the image around it and the prompt are sent to {name} ({model}).	Vùng được chọn, phần hình ảnh xung quanh và mô tả được gửi đến {name} ({model}).
-	What is sent, and to whom	Những gì được gửi đi và gửi cho ai
-	Your key is kept in {store}, never in PhotoCraft's settings files.	Khóa của bạn được lưu trong {store}, không bao giờ trong các tệp cài đặt của PhotoCraft.
-	the macOS Keychain	Chuỗi khóa macOS
-	Windows Credential Manager	Trình quản lý thông tin xác thực Windows
-	memory until PhotoCraft quits	bộ nhớ cho đến khi thoát PhotoCraft
-	Variations	Biến thể
-	No prompt: continues the image	Không có mô tả: tiếp nối hình ảnh
-	Sends the same area and prompt to {name} again for three more.	Gửi lại cùng vùng và mô tả đến {name} để có thêm ba kết quả.
-	Generate More	Tạo thêm
-	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Mỗi lần Tô tạo sinh tạo ba biến thể, nên gửi ba yêu cầu, mỗi yêu cầu đều được tính phí vào khóa của bạn.
-	Fill selection	Tô vùng chọn
-	Edit selection	Sửa vùng chọn
-	Generate new content in the selection, or remove what is there	Tạo nội dung mới trong vùng chọn hoặc xóa những gì đang có
-	Keep what is in the selection and change only what you ask for	Giữ nội dung trong vùng chọn và chỉ thay đổi phần bạn yêu cầu
-	Describe what to change in the selection: what is there is kept, except what you ask to change (a colour, a text, a material).	Mô tả điều cần thay đổi trong vùng chọn: nội dung hiện có được giữ nguyên, trừ phần bạn yêu cầu thay đổi (màu sắc, chữ, chất liệu).
-	What to change	Điều cần thay đổi
-	Empty: removes what is selected and continues the image through it.	Để trống: xóa nội dung được chọn và tiếp nối hình ảnh qua vùng chọn.
-	Empty: places what the reference images show in the selection.	Để trống: đặt nội dung trong ảnh tham chiếu vào vùng chọn.
-	Reference images	Ảnh tham chiếu
-	Optional: an object or product to show, or a design, colour or look to match.	Không bắt buộc: một vật thể hoặc sản phẩm cần hiển thị, hoặc một thiết kế, màu sắc hay phong cách cần theo.
-	Add Reference…	Thêm tham chiếu…
-	Image File…	Tệp hình ảnh…
-	Open Documents	Tài liệu đang mở
-	The reference images are sent too, at most 1024 pixels on their long side.	Ảnh tham chiếu cũng được gửi đi, cạnh dài tối đa 1024 pixel.
-	In Edit mode the selected area is sent as it is. Reference images you add are sent too.	Ở chế độ Sửa vùng chọn, vùng được chọn được gửi nguyên trạng. Ảnh tham chiếu bạn thêm cũng được gửi đi.
 # Embedded Profile Mismatch: profile names beside the choices, Remember this choice
 	Use the embedded profile ({profile})	Dùng hồ sơ nhúng ({profile})
 	Convert to the working space ({profile})	Chuyển sang không gian làm việc ({profile})
@@ -3740,7 +3694,57 @@ curves	Smooth	Làm mượt
 	This document's layers: {needed} of {budget} for layers	Các lớp của tài liệu này: {needed} trên {budget} dành cho lớp
 	This document's layers need {needed} but may hold {budget}: whole-document redraws use the CPU	Các lớp của tài liệu này cần {needed} nhưng chỉ được dùng {budget}: vẽ lại toàn bộ tài liệu dùng CPU
 	GPU Memory (MB, 0 = Automatic)	Bộ nhớ GPU (MB, 0 = Tự động)
-# Generative Fill side by side: fills that don't wait for each other (this fork)
+# Generative Fill and Generative AI Settings (#41)
+	API key	Khóa API
+	Describe what to generate in the selection, or leave it empty to continue the image through it.	Mô tả nội dung cần tạo trong vùng chọn, hoặc để trống để ảnh tiếp nối qua vùng đó.
+	Generative AI	AI tạo sinh
+	Generative AI Settings…	Cài đặt AI tạo sinh…
+	Generative AI needs the desktop app.	AI tạo sinh cần ứng dụng máy tính.
+	Generative Fill uses {name} ({model}).	Tô tạo sinh dùng {name} ({model}).
+	Generative Fill…	Tô tạo sinh…
+	Get a Gemini API key from Google AI Studio	Lấy khóa Gemini API từ Google AI Studio
+	No API key is saved for {provider}.	Chưa lưu khóa API nào cho {provider}.
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	Không có gì được gửi đi cho đến khi bạn chạy Tô tạo sinh. Mỗi lần bạn chạy, PhotoCraft gửi vùng đã chọn cùng phần ảnh xung quanh, một mặt nạ đen trắng của vùng chọn và lời nhắc của bạn tới Google (generativelanguage.googleapis.com) kèm khóa API của bạn. Điều khoản và chính sách quyền riêng tư của Gemini API của Google được áp dụng, và mức sử dụng được tính phí vào khóa của bạn. Kết quả mang hình mờ SynthID của Google.
+	Off. Set up a provider with your own API key to use Generative Fill.	Tắt. Thiết lập một nhà cung cấp bằng khóa API của riêng bạn để dùng Tô tạo sinh.
+	Paste your Gemini API key	Dán khóa Gemini API của bạn
+	Prompt (optional)	Lời nhắc (không bắt buộc)
+	Provider	Nhà cung cấp
+	Remove Key	Gỡ khóa
+	Saved (paste to replace)	Đã lưu (dán để thay thế)
+	The selected area, the image around it and the prompt are sent to {name} ({model}).	Vùng đã chọn, phần ảnh xung quanh và lời nhắc được gửi tới {name} ({model}).
+	What is sent, and to whom	Những gì được gửi, và gửi cho ai
+	Your key is kept in {store}, never in PhotoCraft's settings files.	Khóa của bạn được lưu trong {store}, không bao giờ nằm trong các tệp cài đặt của PhotoCraft.
+	the macOS Keychain	Chuỗi khóa macOS
+	Windows Credential Manager	Trình quản lý thông tin xác thực Windows
+	memory until PhotoCraft quits	bộ nhớ cho đến khi PhotoCraft thoát
+	Fill the selection from a prompt	Tô vùng chọn theo lời nhắc
+	Set up Generative Fill with your own API key	Thiết lập Tô tạo sinh bằng khóa API của riêng bạn
+# Generative Fill variations (#41)
+	Variations	Biến thể
+	No prompt: continues the image	Không có lời nhắc: ảnh được tiếp nối
+	Sends the same area and prompt to {name} again for three more.	Gửi lại cùng vùng và lời nhắc tới {name} để có thêm ba biến thể.
+	Generate More	Tạo thêm
+	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Mỗi lần Tô tạo sinh tạo ba biến thể, nên gửi ba yêu cầu, mỗi yêu cầu được tính phí vào khóa của bạn.
+	Replace	Thay thế
+	{name} was changed by another app after it was opened or saved here.	{name} đã bị một ứng dụng khác thay đổi sau khi được mở hoặc lưu ở đây.
+	Replace it with this document, or cancel and use File › Save As to keep both.	Thay thế bằng tài liệu này, hoặc hủy và dùng Tệp › Lưu thành để giữ cả hai.
+# Generative Fill: Edit mode and reference images
+	Fill selection	Tô vùng chọn
+	Edit selection	Sửa vùng chọn
+	Generate new content in the selection, or remove what is there	Tạo nội dung mới trong vùng chọn hoặc xóa những gì đang có
+	Keep what is in the selection and change only what you ask for	Giữ nội dung trong vùng chọn và chỉ thay đổi phần bạn yêu cầu
+	Describe what to change in the selection: what is there is kept, except what you ask to change (a colour, a text, a material).	Mô tả điều cần thay đổi trong vùng chọn: nội dung hiện có được giữ nguyên, trừ phần bạn yêu cầu thay đổi (màu sắc, chữ, chất liệu).
+	What to change	Điều cần thay đổi
+	Empty: removes what is selected and continues the image through it.	Để trống: xóa nội dung được chọn và tiếp nối hình ảnh qua vùng chọn.
+	Empty: places what the reference images show in the selection.	Để trống: đặt nội dung trong ảnh tham chiếu vào vùng chọn.
+	Reference images	Ảnh tham chiếu
+	Optional: an object or product to show, or a design, colour or look to match.	Không bắt buộc: một vật thể hoặc sản phẩm cần hiển thị, hoặc một thiết kế, màu sắc hay phong cách cần theo.
+	Add Reference…	Thêm tham chiếu…
+	Image File…	Tệp hình ảnh…
+	Open Documents	Tài liệu đang mở
+	The reference images are sent too, at most 1024 pixels on their long side.	Ảnh tham chiếu cũng được gửi đi, cạnh dài tối đa 1024 pixel.
+	In Edit mode the selected area is sent as it is. Reference images you add are sent too.	Ở chế độ Sửa vùng chọn, vùng được chọn được gửi nguyên trạng. Ảnh tham chiếu bạn thêm cũng được gửi đi.
+# Generative Fill side by side: fills that don't wait for each other
 	Cancel this Generative Fill	Hủy lần tô tạo sinh này
 	Discard	Bỏ
 	Each area becomes its own Generative Fill and layer, generated side by side; each sends its own requests.	Mỗi vùng trở thành một lần tô tạo sinh và một lớp riêng, được tạo cùng lúc; mỗi vùng gửi yêu cầu riêng.

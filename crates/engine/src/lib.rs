@@ -507,17 +507,17 @@ pub struct Session {
     /// A finished live stroke offered to the `paint.stroke` / `paint.pencil` that commits it
     /// ([`Session::offer_live_stroke`]).
     pub(crate) live_commit: Option<brush_cmds::LiveCommit>,
+    /// Documents a background open decoded but held back until the user answers the profile
+    /// prompt ([`ColorState::open_question`](color_cmds::ColorState::open_question)): `(id,
+    /// document, source read-only)`. The shell takes them with [`Session::take_held_open`].
+    held_opens: Vec<(u64, Document, bool)>,
+    next_held_open: u64,
     /// The generative image provider the app configured (see [`genai_cmds`]); `None` keeps
     /// generative commands off and the session network-free.
     genai: Option<genai_cmds::SharedProvider>,
     /// What each generative layer made in this session was generated from, and the fills still
     /// running (see [`genai_cmds`]).
     genai_state: genai_cmds::GenState,
-    /// Documents a background open decoded but held back until the user answers the profile
-    /// prompt ([`ColorState::open_question`](color_cmds::ColorState::open_question)): `(id,
-    /// document, source read-only)`. The shell takes them with [`Session::take_held_open`].
-    held_opens: Vec<(u64, Document, bool)>,
-    next_held_open: u64,
 }
 
 /// Move item `i` of `v` to position `to`, clamped to the end. Returns where it went; `None` when

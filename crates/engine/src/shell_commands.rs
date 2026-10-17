@@ -18,7 +18,7 @@ pub const SHELL_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("window.panel.dock", "Dock Panel", &[], None),
     ("window.panel.activate", "Activate Panel", &[], None),
     ("window.panel.close", "Close Panel", &[], None),
-    // This fork: Preferences › Integrations › Generative AI Settings (`photocraft_ui_egui::genai_ui::SETTINGS`).
+    // Edit › Generative AI Settings… (#41); the UI's `genai_ui::SETTINGS`.
     ("ui.generativeAiSettings", "Generative AI Settings…", &[], None),
     ("file.open", "Open…", &["File"], Some("Cmd+O")),
     ("file.save", "Save", &["File"], Some("Cmd+S")),

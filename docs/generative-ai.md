@@ -31,7 +31,7 @@ the maintainers asked for in issue #41.
    showing. Nothing under it changes; one undo removes it. The requests run side by side as one
    background job that can be cancelled; if some fail and others succeed, the successes are kept.
 
-   Fills don't wait for each other, and nothing waits for them (this fork; Photoshop holds the
+   Fills don't wait for each other, and nothing waits for them (Photoshop holds the
    window until each one is done). Press Generate and the selection is let go: select the next
    thing and start another while the first generates. Each fill in progress shows:
    - on the canvas, its area under a moving shimmer with a running outline, and a tag
@@ -72,10 +72,13 @@ Providers today: **Google Gemini** (the Nano Banana image models, default
 Only when Generative Fill or Generate More runs, and only to the configured provider, once per
 variation (so three requests by default, each billed to the user's key). In Fill:
 
-- the selection's bounds plus a margin of context (half the selection's longer side, 64 to
-  1024 px), grown toward the provider's output shape and kept inside the canvas, rendered
-  from all visible layers in sRGB and scaled to at most 2048 px on the long side, with the
-  selection itself replaced by a soft blur of the colours around it. The provider never sees
+- the selection's bounds plus a margin of context (twice the selection's longer side, 64 to
+  2048 px, so the model can follow a pattern or trend that runs through the selection, not
+  just what touches its edge), grown toward the provider's output shape and kept inside the
+  canvas, rendered from all visible layers in sRGB and scaled to at most 2048 px on the long
+  side, with the selection itself replaced by a dimmed soft blur of the colours around it
+  (at full brightness, bright content below an empty area smeared up through it and the
+  model carried that content to the selection's far edge). The provider never sees
   what is being replaced, as Photoshop's fill doesn't, so it can't paint it back: an empty prompt
   removes what was selected and continues the surroundings, including anything that crosses the
   selection's edge. (A flat grey hole was tried first; Gemini drew it in as a grey box or a lamp.);
