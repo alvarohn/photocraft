@@ -5071,6 +5071,7 @@ dependencies = [
  "serde_json",
  "sys-locale",
  "toml",
+ "unicode-bidi",
  "winsafe",
 ]
 

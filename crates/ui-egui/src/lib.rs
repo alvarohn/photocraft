@@ -1,4 +1,4 @@
-//! Photocraft's first UI shell, built on egui/eframe.
+//! PhotoCraft's first UI shell, built on egui/eframe.
 //!
 //! This crate is deliberately thin. Every action goes through
 //! [`photocraft_engine::Session::execute`], and all UI state lives in [`state::UiState`] (plain
@@ -25,6 +25,7 @@ pub mod anchor_tools;
 pub mod artboard_tool;
 pub mod artboard_ui;
 pub(crate) mod background_redraw;
+pub mod bidi_text;
 mod blend_keys;
 pub(crate) mod blend_preview;
 pub mod blur_pins;
@@ -680,7 +681,7 @@ pub struct PhotocraftApp {
     /// The document each of `ui.views` belongs to, as of the last [`Self::sync_views`].
     view_docs: Vec<DocId>,
     pub fps: f32,
-    last_frame_time: f64,
+    pub(crate) last_frame_time: f64,
     thumbs: HashMap<(photocraft_doc::LayerId, u8), (u64, egui::TextureHandle)>,
     /// The document area each layer thumbnail in `thumbs` frames (the canvas, or the layer's
     /// bounds with Clip Thumbnails to Layer Bounds; #4281).
