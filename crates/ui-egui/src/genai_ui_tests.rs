@@ -465,6 +465,89 @@ fn local_server_settings_render() {
     }
 }
 
+/// File › Automate › Generative Batch…: hidden until a provider that edits from instructions is
+/// set up; its dialog lists the open documents, runs the batch with what was chosen, remembers it,
+/// and reports what was written.
+#[test]
+fn the_batch_dialog_runs_a_batch_and_remembers_it() {
+    let batch_in_menu = |app: &PhotocraftApp| crate::menus::menu_items(app).iter().any(|i| i.id == photocraft_engine::genai_cmds::BATCH);
+    let store = Store::default();
+    let off = app_with(&store);
+    assert!(!batch_in_menu(&off), "no item before a provider is set up");
+    let mut app = prompt_ready(&store);
+    assert!(batch_in_menu(&app));
+    let first = app.session.active().unwrap().doc.id.0;
+    app.run("file.new", json!({"width": 40, "height": 30, "background": "#00ff00"})).unwrap();
+    let second = app.session.active().unwrap().doc.id.0;
+    let ctx = egui::Context::default();
+    let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+    assert_eq!(fields(&app, id)["source"], "documents");
+    assert_eq!(fields(&app, id)["documents"], json!([{"id": first, "on": true}, {"id": second, "on": true}]));
+    assert_eq!(crate::genai_ui::ok_label(fields(&app, id)), Some("Start Batch"));
+    // No prompt: it says so and runs nothing.
+    assert!(crate::dialogs::confirm(&mut app, id).is_err());
+    let out = std::env::temp_dir().join(format!("photocraft-genai-ui-batch-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&out);
+    let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+    f.insert("prompt".into(), json!("warmer"));
+    f.insert("documents".into(), json!([{"id": first, "on": false}, {"id": second, "on": true}]));
+    f.insert("output".into(), json!(out.to_string_lossy()));
+    f.insert("variations".into(), json!(2));
+    f.insert("sameLook".into(), json!(true));
+    let r = crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(r["written"].as_array().unwrap().len(), 2, "{r}");
+    let written: Vec<String> = std::fs::read_dir(&out).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+    assert_eq!(written.len(), 2, "{written:?}");
+    let last = app.session.journal.iter().rev().find(|(c, _)| c == photocraft_engine::genai_cmds::BATCH).map(|(_, p)| p.clone());
+    assert!(last.is_none(), "a batch isn't recorded in the journal");
+    let pref = app.session.prefs().dialogs.get(photocraft_engine::genai_cmds::BATCH).unwrap().clone();
+    assert_eq!((pref["prompt"].as_str(), pref["sameLook"].as_bool()), (Some("warmer"), Some(true)));
+    // Opened again: the prompt and Same look are kept, with its words.
+    let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+    assert_eq!(fields(&app, id)["prompt"], "warmer");
+    assert_eq!(fields(&app, id)["sameLookPrompt"], photocraft_engine::genai_cmds::batch::SAME_LOOK_PROMPT);
+    // A batch's end is reported; failed files are kept for the next time.
+    let done = photocraft_engine::jobs::JobEvent {
+        id: photocraft_engine::jobs::JobId(1),
+        command: photocraft_engine::genai_cmds::BATCH.into(),
+        label: "Generative Batch".into(),
+        document: None,
+        outcome: photocraft_engine::jobs::JobOutcome::Done(
+            json!({"written": ["a"], "failed": [{"name": "b.png", "path": "/x/b.png", "error": "no"}], "folders": ["/x/IA"]}),
+        ),
+    };
+    assert!(crate::genai_ui::on_job_event(&mut app, &ctx, &done));
+    assert_eq!(app.genai.batch_failed, ["/x/b.png"]);
+    let _ = std::fs::remove_dir_all(out);
+}
+
+/// Renders the batch dialog for a look (`GENAI_SNAPSHOT_DIR=… cargo test`).
+#[test]
+fn the_batch_dialog_renders() {
+    let store = Store::default();
+    store.borrow_mut().insert("gemini".into(), SECRET.into());
+    let store2 = store.clone();
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
+        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = prompt_ready(&store2);
+        app.run("file.new", json!({"width": 40, "height": 30, "background": "#00ff00"})).unwrap();
+        let ctx = egui::Context::default();
+        let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+        let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+        f.insert("prompt".into(), json!("make the light warmer"));
+        f.insert("sameLook".into(), json!(true));
+        app
+    });
+    h.run_steps(6);
+    h.get_by_label("Start Batch");
+    h.get_by_label("Same look in all");
+    h.get_by_label("Open documents");
+    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+        img.save(std::path::Path::new(&dir).join("genai-batch.png")).unwrap();
+    }
+}
+
 /// Renders OpenAI's settings for a look (`GENAI_SNAPSHOT_DIR=… cargo test`).
 #[test]
 fn openai_settings_render() {

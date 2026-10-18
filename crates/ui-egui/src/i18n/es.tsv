@@ -4275,3 +4275,28 @@ navigator	Zoom	Zoom
 	Z-Image Turbo (Apache 2.0) fills selections from a description; it doesn't edit from instructions or take reference images.	Z-Image Turbo (Apache 2.0) rellena selecciones a partir de una descripción; no edita a partir de instrucciones ni acepta imágenes de referencia.
 	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to the stable-diffusion.cpp server at {url}, without a key. At 127.0.0.1 (this computer) nothing leaves it.	No se envía nada hasta que ejecutas el relleno generativo. Cada vez que lo haces, PhotoCraft envía al servidor de stable-diffusion.cpp en {url} el área seleccionada y la imagen que la rodea, una máscara en blanco y negro de la selección y tu descripción, sin clave. En 127.0.0.1 (este equipo) nada sale de él.
 	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), one after another.	Cada relleno generativo envía una solicitud por variación (de 1 a 4, a elegir en su cuadro de diálogo), una después de otra.
+# Generative Batch
+	Generative Batch…	Lote generativo…
+	Generative Batch	Lote generativo
+	Start Batch	Iniciar lote
+	{on} of {n} ticked	{on} de {n} marcadas
+	Images	Imágenes
+	Open documents	Documentos abiertos
+	A folder	Una carpeta
+	No folder chosen	Ninguna carpeta elegida
+	Choose Folder…	Elegir carpeta…
+	What to change in each image	Qué cambiar en cada imagen
+	Each image is edited whole, as Edit selection does with all of it selected.	Cada imagen se edita entera, como Editar selección con toda la imagen seleccionada.
+	Same look in all	Mismo aspecto en todas
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	La primera imagen se edita primero; su resultado va a las demás como última imagen de referencia, con esto sumado a su descripción:
+	Results	Resultados
+	JPEG files in an {folder} folder beside each image	Archivos JPEG en una carpeta {folder} junto a cada imagen
+	Beside each image	Junto a cada imagen
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Cada imagen se envía a {name} ({model}) una vez por variación, con las imágenes de referencia.
+	Say what to change in each image.	Indica qué cambiar en cada imagen.
+	Generative Batch wrote {n} files to {folder}.	El lote generativo escribió {n} archivos en {folder}.
+	{n} folders	{n} carpetas
+	{n} failed ({error}).	{n} fallaron ({error}).
+	Stopped: {why}	Se detuvo: {why}
+	Generative Batch failed: {error}	El lote generativo falló: {error}
+	Generative Batch cancelled; the files already written are kept.	Lote generativo cancelado; se conservan los archivos ya escritos.

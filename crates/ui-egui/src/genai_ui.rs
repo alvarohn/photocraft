@@ -33,10 +33,11 @@ const PROMPT_MARK: &str = "__genaiPrompt";
 /// `prefs.dialogs` entry holding `{"provider", "model", "options"}`.
 const PREF: &str = "ui.generativeAiSettings";
 
+mod batch;
 mod pending;
 mod providers;
 
-pub use pending::{is_generative, layer_rows, layer_rows_unplaced, on_job_event, paint_canvas as paint_pending, status as status_fills};
+pub use pending::{is_generative, layer_rows, layer_rows_unplaced, paint_canvas as paint_pending, status as status_fills};
 
 /// Shell state that must not be serialised or inspected.
 #[derive(Default)]
@@ -53,6 +54,8 @@ pub struct Runtime {
     previews: std::collections::HashMap<String, Preview>,
     /// Fills in progress, as drawn ([`pending`]).
     pending: pending::Pending,
+    /// The files the last Generative Batch couldn't do: the batch dialog ticks only them next.
+    batch_failed: Vec<String>,
 }
 
 /// A reference image's preview: decoded when it was added, uploaded on first draw.
@@ -96,6 +99,9 @@ pub fn restore(app: &mut PhotocraftApp) -> Result<(), String> {
 /// Menu, palette and shortcut entry points. Clicking Generative Fill asks for a prompt; with
 /// `prompt` already in the params (scripted use) it runs directly.
 pub fn menu(app: &mut PhotocraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+    if let Some(r) = batch::menu(app, id, params) {
+        return Some(r);
+    }
     match id {
         SETTINGS => Some(Ok(json!({"dialog": open_settings(app)}))),
         FILL if params.get("prompt").is_none() => {
@@ -117,12 +123,33 @@ pub fn menu_visible(app: &PhotocraftApp) -> bool {
     app.session.image_provider().is_some_and(|p| p.capabilities().edit)
 }
 
+/// Is menu item `id` shown? Edit › Generative Fill and File › Automate › Generative Batch only
+/// once a provider can run them; every other item, yes.
+pub fn menu_item_visible(app: &PhotocraftApp, id: &str) -> bool {
+    match id {
+        FILL => menu_visible(app),
+        photocraft_engine::genai_cmds::BATCH => app.session.image_provider().is_some_and(|p| p.capabilities().edit_in_place),
+        _ => true,
+    }
+}
+
 pub fn owns(fields: &Map<String, Value>) -> bool {
-    fields.contains_key(SETTINGS_MARK) || fields.contains_key(PROMPT_MARK)
+    fields.contains_key(SETTINGS_MARK) || fields.contains_key(PROMPT_MARK) || fields.contains_key(batch::MARK)
 }
 
 pub fn ok_label(fields: &Map<String, Value>) -> Option<&'static str> {
-    if fields.contains_key(PROMPT_MARK) { Some(tl!("Generate")) } else { None }
+    if fields.contains_key(PROMPT_MARK) {
+        Some(tl!("Generate"))
+    } else if fields.contains_key(batch::MARK) {
+        Some(tl!("Start Batch"))
+    } else {
+        None
+    }
+}
+
+/// A job ended: a Generative Batch's ([`batch`]) or a fill's ([`pending`]). True if handled.
+pub fn on_job_event(app: &mut PhotocraftApp, ctx: &egui::Context, e: &photocraft_engine::jobs::JobEvent) -> bool {
+    batch::on_job_event(app, e) || pending::on_job_event(app, ctx, e)
 }
 
 pub fn open_settings(app: &mut PhotocraftApp) -> u64 {
@@ -207,10 +234,13 @@ fn references_of(f: &Map<String, Value>) -> Vec<Value> {
     f.get("references").and_then(Value::as_array).cloned().unwrap_or_default()
 }
 
-/// Add a reference image to the open prompt dialog (if it is still open and has room).
+/// Add a reference image to the open prompt dialog, or the batch dialog (if it is still open and
+/// has room).
 fn add_reference(app: &mut PhotocraftApp, entry: Value, preview: Option<egui::ColorImage>) {
-    let (_, max) = prompt_capabilities(app);
-    let Some(d) = app.ui.dialogs.iter_mut().find(|d| d.fields.contains_key(PROMPT_MARK)) else { return };
+    let (_, prompt_max) = prompt_capabilities(app);
+    let batch_max = app.ui.dialogs.iter().find(|d| d.fields.contains_key(batch::MARK)).map(|d| batch::room(app, &d.fields));
+    let Some(d) = app.ui.dialogs.iter_mut().find(|d| d.fields.contains_key(PROMPT_MARK) || d.fields.contains_key(batch::MARK)) else { return };
+    let max = if d.fields.contains_key(batch::MARK) { batch_max.unwrap_or(0) } else { prompt_max };
     let mut refs = references_of(&d.fields);
     if refs.len() >= max || refs.contains(&entry) {
         return;
@@ -256,6 +286,8 @@ fn preview_texture(app: &mut PhotocraftApp, ctx: &egui::Context, r: &Value) -> O
 pub fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) {
     if f.contains_key(PROMPT_MARK) {
         prompt_body(app, ui, f);
+    } else if f.contains_key(batch::MARK) {
+        batch::body(app, ui, f);
     } else {
         settings_body(app, ui, f);
     }
@@ -503,6 +535,9 @@ fn settings_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String,
 
 /// OK: remember the choice, save a newly typed key, and install the provider (or remove it).
 pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value, String> {
+    if f.contains_key(batch::MARK) {
+        return batch::confirm(app, f);
+    }
     if f.contains_key(PROMPT_MARK) {
         let prompt = f.get("prompt").and_then(Value::as_str).unwrap_or("").trim().to_owned();
         let (can_edit, max_references) = prompt_capabilities(app);

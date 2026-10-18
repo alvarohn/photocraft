@@ -43,9 +43,9 @@ pub const DEFAULT_SIDE: u32 = 512;
 /// Sizes are multiples of this (Qwen Image 2.1 needs 32; others align to 8 or 64 themselves).
 const STEP: u32 = 32;
 /// How long to wait between looks at a job, and between looks at Cancel, in milliseconds.
-#[cfg(not(test))]
+#[cfg(all(not(test), not(target_arch = "wasm32")))]
 const POLL_MS: u64 = 1_000;
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 const POLL_MS: u64 = 1;
 #[cfg(not(target_arch = "wasm32"))]
 const CANCEL_MS: u64 = 100;

@@ -50,9 +50,11 @@ use crate::jobs::{JobCtx, JobId};
 use crate::{EngineError, Result, Session};
 
 mod areas;
+pub mod batch;
 mod queue;
 
 pub use areas::MAX_AREAS;
+pub use batch::BATCH;
 pub use queue::MAX_PARALLEL;
 
 pub const FILL: &str = "edit.generativeFill";
@@ -62,6 +64,12 @@ pub const RETRY: &str = "layer.generative.retry";
 pub const DISCARD: &str = "layer.generative.discard";
 pub const FILLS: &str = "layer.generative.fills";
 pub const AREAS: &str = "layer.generative.areas";
+
+/// Does command `id` send document pixels to the image provider? Automation may not run these on
+/// the user's behalf (#41).
+pub fn uploads_pixels(id: &str) -> bool {
+    [FILL, MORE, RETRY, BATCH].contains(&id)
+}
 const LABEL: &str = "Generative Fill";
 /// Longest side sent to the provider; larger areas are scaled down for the request and the
 /// result is scaled back up.
@@ -836,9 +844,8 @@ fn for_provider<'a>(request: &'a EditRequest, provider: &dyn ImageProvider) -> R
     }
 }
 
-/// Ask for `count` results of one request. The calls run side by side (each is a slow network
-/// round trip), or one after another for a provider that takes one at a time (a local server);
-/// any that fail are dropped as long as one succeeds.
+/// Ask for `count` results of one request; [`request_results`] with the provider's error as the
+/// command's.
 fn request_all(
     ctx: &crate::jobs::JobCtx,
     provider: &dyn ImageProvider,
@@ -846,6 +853,20 @@ fn request_all(
     count: usize,
     status: Option<&FillStatus>,
 ) -> Result<Vec<Vec<u8>>> {
+    request_results(ctx, provider, request, count, status)?.map_err(other)
+}
+
+/// Ask for `count` results of one request. The calls run side by side (each is a slow network
+/// round trip), or one after another for a provider that takes one at a time (a local server);
+/// any that fail are dropped as long as one succeeds. The inner error is the provider's, when
+/// none succeeded (the batch tells an account's failures from others by it).
+fn request_results(
+    ctx: &crate::jobs::JobCtx,
+    provider: &dyn ImageProvider,
+    request: &EditRequest,
+    count: usize,
+    status: Option<&FillStatus>,
+) -> Result<std::result::Result<Vec<Vec<u8>>, GenError>> {
     let name = provider.info().name;
     let msg = if count == 1 { format!("Waiting for {name}") } else { format!("Waiting for {name} ({count} variations)") };
     ctx.progress(0.15, &msg);
@@ -901,11 +922,11 @@ fn request_all(
             }
         }
     }
-    match (images.is_empty(), first_error) {
-        (true, Some(e)) => Err(other(e)),
-        (true, None) => Err(other("the image service returned nothing")),
+    Ok(match (images.is_empty(), first_error) {
+        (true, Some(e)) => Err(e),
+        (true, None) => Err(GenError::Refused("it returned no image".into())),
         _ => Ok(images),
-    }
+    })
 }
 
 /// A provider's image, colour-matched to the original around the selection, scaled into `area`
@@ -1295,7 +1316,7 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 pub fn specs() -> Vec<CommandSpec> {
-    vec![
+    let mut v = vec![
         CommandSpec {
             id: FILL,
             label: "Generative Fill…",
@@ -1366,7 +1387,9 @@ pub fn specs() -> Vec<CommandSpec> {
             run: areas,
             journal: false,
         },
-    ]
+    ];
+    v.extend(batch::specs());
+    v
 }
 
 #[cfg(test)]

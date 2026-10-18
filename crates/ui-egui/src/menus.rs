@@ -1072,10 +1072,9 @@ pub fn menu_items(app: &PhotocraftApp) -> Vec<MenuItem> {
     if !prefs.menus.hidden.is_empty() {
         items.retain(|i| !prefs.menus.is_hidden(&i.id));
     }
-    // Edit › Generative Fill appears once a provider is set up (#41).
-    if !crate::genai_ui::menu_visible(app) {
-        items.retain(|i| i.id != photocraft_engine::genai_cmds::FILL);
-    }
+    // Edit › Generative Fill (and the fork's File › Automate › Generative Batch) appear once a
+    // provider is set up (#41).
+    items.retain(|i| crate::genai_ui::menu_item_visible(app, &i.id));
     if prefs.interface.show_menu_colors {
         for it in &mut items {
             it.color = prefs.menus.colors.get(&it.id).cloned();

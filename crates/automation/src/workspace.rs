@@ -244,7 +244,7 @@ fn file_error(operation: &str, path: &str, error: std::io::Error) -> AutomationE
 pub fn authorize_engine_command(id: &str, params: &Value) -> Result<(), AutomationError> {
     // Generative Fill and Generate More upload document pixels to the user's image provider.
     // Automation may not trigger that upload on the user's behalf (#41): they stay hands-on.
-    if [photocraft_engine::genai_cmds::FILL, photocraft_engine::genai_cmds::MORE, photocraft_engine::genai_cmds::RETRY].contains(&id) {
+    if photocraft_engine::genai_cmds::uploads_pixels(id) {
         return Err(AutomationError::BadRequest(format!(
             "automation command `{id}` sends document pixels to an image service and is disabled; run it from the app"
         )));

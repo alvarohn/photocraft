@@ -65,6 +65,30 @@ the maintainers asked for in issue #41.
    Generate More sends the same image, mask, prompt, mode and reference images again and adds
    as many more as the last fill made with that provider (`layer.generative.more`).
 
+5. **File › Automate › Generative Batch…** (once a provider that edits from instructions is set
+   up: Gemini, OpenAI, or a local edit model such as Qwen Image 2.1) runs the same edit on many
+   images:
+   - *Images*: the open documents, or a folder's image files; tick which.
+   - *What to change*: the prompt (required). Each image is edited whole, as Edit selection does
+     with all of it selected; reference images and the number of variations as in the prompt
+     dialog.
+   - *Same look in all*: the first image is edited first, alone; its result goes to every other
+     one as their last reference image, and a sentence (shown, editable) is added to their prompt
+     saying to match it. So a set of photos comes out with one look. It takes one of the
+     provider's reference places.
+   - *Results*: JPEG files (quality 92) the size of each image, in an `IA` folder beside it
+     (`<folder>/IA/<name>.jpg`, then `<name>-2.jpg`… for more variations), or in a folder chosen.
+     An open document that was never saved needs a folder chosen. A result is never written over
+     the image it came from.
+
+   Start Batch runs it as one background job: its progress (*3 of 12 images: name*) and Cancel in
+   the status bar like any job; files already written stay when it is cancelled. It shares the
+   provider's turns with the fills (up to 5 images at once; one for a local server). An image that
+   fails is reported and the batch goes on, but two failures in a row that the account causes
+   (the key, the balance or spending limit, the rate limit after its retries) stop it, as the
+   rest would fail too. When it ends, a notice says how many files it wrote, where, and what
+   failed; opened again, the dialog ticks only the files that failed, to retry them.
+
 Photoshop keeps its variations inside one generative layer. PhotoCraft uses a group of ordinary
 layers instead, so a PSD round trip needs no format changes and other apps see plain layers. What
 each group was generated from is kept in the session only: after reopening a file the group is an
@@ -197,6 +221,11 @@ variation (1 to 4, three by default, each billed to the user's key). In Fill:
   where the mask's alpha is zero) and opaque elsewhere;
 - the prompt.
 
+Generative Batch sends each image whole: its composite at most 2048 px on its long side (the
+provider's working size if smaller), a mask of all of it, the prompt (with Same look's sentence
+after the first) and the reference images (with Same look, the first image's result, at most
+1024 px, as the last one), once per variation.
+
 In Edit, the same, except that the selection is sent as it is (not blurred), since the provider is
 to change what is there; the instruction asks it to change only what the prompt says and keep
 shapes, texture, lettering and light. Without reference images, Fill sends exactly what it sent
@@ -247,14 +276,18 @@ request (`PHOTOCRAFT_LIVE_REPLAY`). Gemini returns JPEG (its only output format)
 
 ## Automation
 
+`edit.generativeBatch` (`prompt`, `files` and/or `documents`, `variations`, `references`,
+`sameLook`, `sameLookPrompt`, `output`; result `{written, failed: [{name, error, path |
+document}], stopped, skipped, images, folders}`) is the batch, a background job like the others.
+
 `edit.generativeFill` is a normal engine command (one undo step, a cancellable job; params
 `prompt`, `variations` (1 to 4; by default the provider's, 3 for the cloud services), `mode` (`"fill"`, the default, or `"edit"`, which
 needs a prompt), `references` (up to 4 file paths, 15 with OpenAI, `{"path": …}` or `{"document": id}` of an
 open document) and `area` (fill only that one of the selection's separate areas, numbered from
 0 top to bottom, as `layer.generative.areas` lists them)) so scripts and recorded actions can run
 it locally, but automation (the control channel and MCP) may not: `authorize_engine_command`
-refuses it, `layer.generative.more` and `layer.generative.retry`, because they upload document
-pixels. `layer.generative.selectVariation` sends nothing and is allowed. An explicit opt-in for
+refuses it, `layer.generative.more`, `layer.generative.retry` and `edit.generativeBatch`
+(`genai_cmds::uploads_pixels`), because they upload document pixels. `layer.generative.selectVariation` sends nothing and is allowed. An explicit opt-in for
 automation can come later.
 
 Started in the background, a fill returns `{job, fill}` at once. `layer.generative.fills` lists
@@ -271,10 +304,12 @@ before.
 |---|---|
 | `crates/genai` | `ImageProvider` (generate, edit with mask in Fill or Edit mode with reference images, variations; capabilities, including `edit_in_place` and `max_references`; output shape, working size, mask form, how many requests at once, default number of variations, cost estimate, progress), `HttpTransport` (the network seam: POST, and GET for polling), `ApiKey`, `Multipart`, and the backends: `gemini.rs`, `openai.rs`, `sdcpp.rs` (a local stable-diffusion.cpp server). No network code: it builds for wasm and its tests use a fake transport. |
 | `crates/engine/src/genai_cmds.rs` | `edit.generativeFill`, `layer.generative.selectVariation`, `layer.generative.more`, `.retry`, `.discard`, `.fills`, `.areas`: context area, pixel interchange (after #730's approach), reference images (`reference_image`), the job, the masked group of variations, the fills that haven't landed (`GenState`). `Session::set_image_provider` installs a provider. |
+| `crates/engine/src/genai_cmds/batch.rs` | `edit.generativeBatch`: the images, one job, Same look, the account-failure stop, the JPEGs written. |
 | `crates/engine/src/genai_cmds/queue.rs` | Turns at the provider (at most 5 fills at once, in order) and the pauses after a rate-limit answer. |
 | `crates/engine/src/genai_cmds/areas.rs` | A selection's separate areas (8-connected parts, on a grid of at most a million cells) and the mask of one of them. |
 | `crates/engine/src/jobs.rs` (`run_on`) | A job that edits a document without locking it: the fills' jobs. |
 | `crates/ui-egui/src/genai_ui.rs` | Generative AI Settings, the prompt dialog (Fill / Edit tabs, reference images, each area on its own, variations, cost), the options bar button, Properties › Variations, `restore` at launch. |
+| `crates/ui-egui/src/genai_ui/batch.rs` | File › Automate › Generative Batch…: the dialog, and the notice when a batch ends. |
 | `crates/ui-egui/src/genai_ui/providers.rs` | The providers the settings offer and each one's rows (model, key, options), notes and what is sent; preferences `{"provider", "model", "options": {<provider>: {…}}}`. |
 | `crates/ui-egui/src/genai_ui/pending.rs` | Fills in progress: the canvas shimmer, outline and tags, the Layers panel's "Generating…" rows, the status bar's readout and list, the flash when one lands. |
 | `apps/photocraft/src/genai.rs` | The desktop `GenAiServices`: credential store (`keyring`), HTTPS transport (`ureq` + rustls; 3 minutes for Gemini, 10 for OpenAI), the local server's transport (plain HTTP allowed, no proxy, short calls) and `build`, which makes a provider from its id, model, options and key (none for the local server). |
