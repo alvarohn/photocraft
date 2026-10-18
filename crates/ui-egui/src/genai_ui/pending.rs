@@ -220,7 +220,11 @@ fn state_text(f: &FillInfo) -> String {
     match f.state {
         "failed" => tl!("Failed").to_owned(),
         "queued" => crate::i18n::fmt(tl!("Waiting ({n})"), &[("n", &f.queue_position.to_string())]),
-        _ => tl!("Generating").to_owned(),
+        // A provider that reports how far it is (a local model's sampling steps).
+        _ => match f.provider_progress {
+            Some(p) => format!("{} {}%", tl!("Generating"), (p.clamp(0.0, 1.0) * 100.0).round() as u32),
+            None => tl!("Generating").to_owned(),
+        },
     }
 }
 

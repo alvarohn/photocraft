@@ -16,6 +16,7 @@
 
 pub mod gemini;
 pub mod openai;
+pub mod sdcpp;
 
 /// Largest response body a provider accepts (a 4K PNG is well under this).
 pub const MAX_RESPONSE: usize = 48 * 1024 * 1024;

@@ -37,7 +37,9 @@ repository doesn't have, so merging it stays easy.
   dialog asks for 1 to 4 variations (remembered per provider), and besides Gemini, Generative AI
   Settings offers **OpenAI** (GPT Image 2.5 Sunburst and Flare, 2, 1.5, 1, 1 Mini; quality,
   working resolution up to 4K, output format, input fidelity, a cost estimate; up to 15 reference
-  images). New files: `crates/genai/src/openai.rs`, `crates/ui-egui/src/genai_ui/providers.rs`;
+  images) and **a local stable-diffusion.cpp server** (`sd-server`, no key: Z-Image Turbo, Qwen
+  Image 2.1 Turbo, or another model; one request at a time, a small working size scaled back up,
+  progress by sampling step). New file for it: `crates/genai/src/sdcpp.rs`. New files: `crates/genai/src/openai.rs`, `crates/ui-egui/src/genai_ui/providers.rs`;
   small changes in texjer's files (`lib.rs` of `genai`, `genai_cmds.rs`, `queue.rs`,
   `genai_ui.rs`, `apps/photocraft/src/genai.rs`) and one line in the official
   `crates/ui-egui/src/lib.rs` (`BuildProviderFn` takes the provider's options and an optional

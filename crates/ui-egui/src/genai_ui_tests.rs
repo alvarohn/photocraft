@@ -416,6 +416,55 @@ fn the_dialogs_render() {
     }
 }
 
+/// A local stable-diffusion.cpp server takes no key: OK keeps its model and options and installs
+/// it without storing anything in the credential store; a launch restores it the same way.
+#[test]
+fn a_local_server_needs_no_key() {
+    let store = Store::default();
+    let mut app = app_with(&store);
+    let id = open_settings(&mut app);
+    pick_provider(&mut app, id, "sdcpp");
+    assert_eq!(fields(&app, id)["model"], photocraft_genai::sdcpp::DEFAULT_PRESET);
+    assert_eq!(fields(&app, id)["hasKey"], false);
+    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+    f.insert("model".into(), json!("qwen-image-2.1-turbo"));
+    f.insert("options".into(), json!({"url": "http://127.0.0.1:1234", "workSide": 768}));
+    app.genai.key_input = "typed by mistake".into();
+    let r = crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(r["ready"], true);
+    assert!(store.borrow().is_empty(), "no key is stored for it");
+    assert_eq!(app.session.image_provider().unwrap().info().id, "sdcpp");
+    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["options"]["sdcpp"]["workSide"], 768);
+    let mut next = PhotocraftApp::new(Session::new(), Services { genai: Some(services(&store)), ..Default::default() });
+    next.session.prefs.edit(|p| p.dialogs = app.session.prefs().dialogs.clone());
+    restore(&mut next).unwrap();
+    assert_eq!(next.session.image_provider().unwrap().info().id, "sdcpp");
+}
+
+/// Renders the local server's settings with Qwen Image 2.1 Turbo, whose licence note shows
+/// (`GENAI_SNAPSHOT_DIR=… cargo test` saves a look).
+#[test]
+fn local_server_settings_render() {
+    let store = Store::default();
+    let store2 = store.clone();
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
+        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = app_with(&store2);
+        let id = open_settings(&mut app);
+        pick_provider(&mut app, id, "sdcpp");
+        app.ui.dialog_mut(id).unwrap().fields.insert("model".into(), json!("qwen-image-2.1-turbo"));
+        app
+    });
+    h.run_steps(6);
+    h.get_by_label("Server address");
+    h.get_by_label("Working size");
+    h.get_by_label("Qwen Image 2.1 Turbo is released under the Qwen Research licence: for non-commercial use only.");
+    assert!(h.query_by_label("API key").is_none(), "no key for a local server");
+    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+        img.save(std::path::Path::new(&dir).join("genai-settings-local.png")).unwrap();
+    }
+}
+
 /// Renders OpenAI's settings for a look (`GENAI_SNAPSHOT_DIR=… cargo test`).
 #[test]
 fn openai_settings_render() {
