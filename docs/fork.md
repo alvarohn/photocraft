@@ -93,7 +93,8 @@ undone:
   reports (`usage`) aren't shown afterwards. Each variation is its own request, so the image sent
   is billed once per variation (`n` would bill it once).
 - **The local server isn't started by PhotoCraft**: the model, the device for each part
-  (`--backend`, `--max-vram`) and other flags stay in sd-server's command line. A server already
+  (`--backend`, `--max-vram`) and other flags stay in sd-server's command line (the splits that
+  ran Z-Image Turbo and Qwen Image 2.1 Turbo on a 2 GB GTX 1050 are in `generative-ai.md`). A server already
   generating can't be stopped from PhotoCraft (the server refuses; its next job waits).
 - **Fill strength on local models** was chosen from the server's code, not from measured results
   (default 100%); tune it on the owner's machine.

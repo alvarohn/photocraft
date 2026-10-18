@@ -179,29 +179,41 @@ The mask is black and white; the server rounds it at 50% and widens it to its 8-
 and PhotoCraft keeps only the selection's own pixels of the result (with its soft edge), as for
 every provider.
 
-Running `sd-server` (from stable-diffusion.cpp's releases; Vulkan builds run on most GPUs):
+Running `sd-server` (from stable-diffusion.cpp's releases; Vulkan builds run on most GPUs). Which
+device runs each part (the text encoder `te`, the diffusion model and the VAE) and any other option
+go in this command, since PhotoCraft doesn't start the server, and each model and card wants its own
+split. These are the ones that worked on a 2 GB GTX 1050 (Windows, Vulkan, NVIDIA driver 582.78,
+stable-diffusion.cpp master-973-f0aac52, 18 October 2026, 512×512 and 8 steps); `Vulkan1` is that
+card's number on that PC, another PC may number it differently:
 
 ```text
 sd-server --listen-port 1234 --diffusion-model z_image_turbo-Q3_K.gguf --llm Qwen3-4B-Instruct-2507-Q4_K_M.gguf ^
-  --vae ae.safetensors --cfg-scale 1.0 --steps 8 --offload-to-cpu --vae-tiling -v
+  --vae ae.safetensors --cfg-scale 1.0 --steps 8 ^
+  --backend Vulkan1 --offload-to-cpu --vae-tiling -v
 
 sd-server --listen-port 1234 --diffusion-model <Qwen Image 2.1 Turbo>.gguf --llm Qwen3VL-8B-Instruct-Q4_K_M.gguf ^
   --llm_vision mmproj-Qwen3VL-8B-Instruct-F16.gguf --vae qwen_image_2.1_vae_bf16.safetensors ^
-  --sigmas qwen-image-2.1-turbo --steps 8 --cfg-scale 1.0 --sampling-method euler --offload-to-cpu --vae-tiling -v
+  --sigmas qwen-image-2.1-turbo --steps 8 --cfg-scale 1.0 --sampling-method euler ^
+  --backend "te=Vulkan1,diffusion=Vulkan1,vae=CPU" --vae-tiling --max-vram 1.0 --mmap ^
+  --model-args qwen_image_2_1_prefix_cache=false -v
 ```
+
+| On the GTX 1050 | Total | Per step | VAE |
+|---|---|---|---|
+| Z-Image Turbo | 3.8 min | 23 s | 11 s, on the card |
+| Qwen Image 2.1 Turbo | 5.9 min | 23 s | 149 s, on the processor with tiling (73 s without it, in a processor-only run) |
+
+On the processor alone they took 9.3 and 11 minutes. For Qwen Image 2.1 on that card, leave out
+`--offload-to-cpu`: with it, and also with `--max-vram 1.5`, the card runs out of memory
+(`ErrorOutOfDeviceMemory`). Its VAE (`wan_vae`) on the card's Vulkan driver crashes the driver
+(an access violation, 0xC0000005, in `nvoglv64.dll`, as it starts decoding the tiles), hence
+`vae=CPU`.
 
 `--llm_vision` (the text encoder's vision weights) is what lets Qwen Image 2.1 read reference
 images. With the Qwen Image 2.1 Turbo preset PhotoCraft always sends the image as a reference, so
 a server started without it fails every fill ("Qwen Image 2.1 editing requires Qwen3-VL vision
 weights"); to use such a server as a plain inpainter, pick *Other model* with *It edits from
-instructions* unticked (and set its steps to 8, guidance to 1). Which device runs each part (`--backend`, `--max-vram`,
-`--offload-to-cpu`) depends on the GPU: on a 2 GB GTX 1050 (Vulkan, October 2026) Z-Image Turbo ran
-at 512×512 in 3.8 minutes with `--backend Vulkan1 --offload-to-cpu --vae-tiling`, and Qwen Image 2.1
-Turbo in 5.9 minutes with `--backend "te=Vulkan1,diffusion=Vulkan1,vae=CPU" --vae-tiling
---max-vram 1.0 --mmap --model-args qwen_image_2_1_prefix_cache=false` and *without*
-`--offload-to-cpu` (with it, or `--max-vram 1.5`, the card ran out of memory; its VAE on that
-card's Vulkan driver crashed the driver, hence `vae=CPU`). On the processor alone: 9.3 and 11
-minutes. PhotoCraft doesn't start the server: these choices stay in its command.
+instructions* unticked (and set its steps to 8, guidance to 1).
 
 ## What is sent
 
