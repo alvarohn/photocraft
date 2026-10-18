@@ -19,6 +19,7 @@ pub const SETTINGS: &str = "ui.generativeAiSettings";
 const FILL: &str = photocraft_engine::genai_cmds::FILL;
 const SELECT_VARIATION: &str = photocraft_engine::genai_cmds::SELECT_VARIATION;
 const MORE: &str = photocraft_engine::genai_cmds::MORE;
+const MAX_VARIATIONS: u64 = photocraft_engine::genai_cmds::MAX_VARIATIONS;
 /// Long side of a variation thumbnail, in texels.
 const THUMB: u32 = 96;
 /// Most separate areas of a selection the prompt dialog offers to fill one by one (each is its
@@ -165,8 +166,18 @@ fn open_prompt(app: &mut PhotocraftApp) -> u64 {
     f.insert("mode".into(), json!(mode));
     f.insert("references".into(), Value::Array(references));
     f.insert("separate".into(), json!(separate));
+    f.insert("variations".into(), json!(chosen_variations(app)));
     f.insert("__areas".into(), json!(areas));
     app.ui.open_dialog(DialogKind::Command, f)
+}
+
+/// How many variations a fill with the configured provider asks for: the last number chosen with
+/// that provider (kept per provider: a local model takes minutes an image, a service seconds),
+/// else its default.
+fn chosen_variations(app: &PhotocraftApp) -> u64 {
+    let Some(p) = app.session.image_provider() else { return 3 };
+    let saved = app.session.prefs().dialogs.get(FILL).and_then(|v| v.get("variations")).and_then(|v| v.get(p.info().id)).and_then(Value::as_u64);
+    saved.filter(|n| (1..=MAX_VARIATIONS).contains(n)).unwrap_or(p.default_variations() as u64)
 }
 
 /// What the configured provider can do in the prompt dialog: (edit in place, most references).
@@ -399,6 +410,8 @@ fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, V
     }
     areas_section(ui, f);
     ui.add_space(8.0);
+    variations_row(ui, f);
+    ui.add_space(8.0);
     if let Some(info) = app.session.image_provider().map(|p| p.info()) {
         faint(
             ui,
@@ -411,6 +424,24 @@ fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, V
             faint(ui, tl!("The reference images are sent too, at most 1024 pixels on their long side."));
         }
     }
+}
+
+/// How many variations to make, 1 to 4: one request each.
+fn variations_row(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
+    let n = f.get("variations").and_then(Value::as_u64).unwrap_or(3);
+    ui.horizontal(|ui| {
+        ui.label(tl!("Variations")).on_hover_text(tl!("How many versions to generate. Each one is a request of its own."));
+        ui.add_space(4.0);
+        ui.spacing_mut().item_spacing.x = 4.0;
+        for k in 1..=MAX_VARIATIONS {
+            let label = k.to_string();
+            let r = crate::widgets::pill_tab(ui, &label, n == k);
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, n == k, &label));
+            if r.clicked() {
+                f.insert("variations".into(), json!(k));
+            }
+        }
+    });
 }
 
 /// The selection's separate areas (several objects selected together): fill each on its own, side
@@ -504,7 +535,7 @@ fn settings_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String,
         ui.add_space(4.0);
         faint(ui, tl!("In Edit mode the selected area is sent as it is. Reference images you add are sent too."));
         ui.add_space(4.0);
-        faint(ui, tl!("Each Generative Fill makes three variations, so it sends three requests, each billed to your key."));
+        faint(ui, tl!("Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key."));
         ui.add_space(4.0);
         let store = app.services.genai.as_ref().map_or("", |s| s.key_store_name);
         faint(ui, &crate::i18n::fmt(tl!("Your key is kept in {store}, never in PhotoCraft's settings files."), &[("store", tl!(store))]));
@@ -520,13 +551,21 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
         let references: Vec<Value> = references_of(f).into_iter().filter(|r| reference_name(app, r).is_some()).take(max_references).collect();
         let separate = f.get("separate").and_then(Value::as_bool).unwrap_or(true);
         let areas = f.get("__areas").and_then(Value::as_u64).unwrap_or(0) as usize;
-        app.session.prefs.edit(|p| p.dialogs.insert(FILL.into(), json!({"prompt": prompt, "mode": chosen, "separate": separate})));
+        let variations = f.get("variations").and_then(Value::as_u64).filter(|n| (1..=MAX_VARIATIONS).contains(n)).unwrap_or_else(|| chosen_variations(app));
+        // The number of variations is kept per provider.
+        let mut per_provider = app.session.prefs().dialogs.get(FILL).and_then(|v| v.get("variations")).and_then(Value::as_object).cloned().unwrap_or_default();
+        if let Some(p) = app.session.image_provider() {
+            per_provider.insert(p.info().id.into(), json!(variations));
+        }
+        let remembered = json!({"prompt": prompt, "mode": chosen, "separate": separate, "variations": per_provider});
+        app.session.prefs.edit(|p| p.dialogs.insert(FILL.into(), remembered));
         app.genai.references = references.clone();
         // Edit needs something to change: with no prompt it removes, as Fill does.
         let mode = if prompt.is_empty() { "fill" } else { chosen };
         let mut params = Map::new();
         params.insert("prompt".into(), json!(prompt));
         params.insert("mode".into(), json!(mode));
+        params.insert("variations".into(), json!(variations));
         if !references.is_empty() {
             params.insert("references".into(), Value::Array(references));
         }
@@ -656,7 +695,8 @@ fn variation_thumb(app: &mut PhotocraftApp, ctx: &egui::Context, variation: &Lay
 }
 
 /// Properties › Variations, for the active generative layer (or one of its variations): a row of
-/// thumbnails, one per variation (click one to show it), and Generate More, as Photoshop's
+/// thumbnails, one per variation (click one to show it), and Generate More (as many as the last
+/// fill asked for), as Photoshop's
 /// Properties panel offers for a generative layer. Compact, since the dock can be short.
 pub fn variations_section(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     let Some(group_id) = app.session.generative_layer() else { return };
@@ -667,8 +707,9 @@ pub fn variations_section(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
         app.genai.thumbs.retain(|id, _| st.doc.layer(*id).is_some());
     }
     let prompt = app.session.generative_prompt(group_id).unwrap_or("").to_owned();
+    let count = chosen_variations(app);
     let tip = match app.session.image_provider().map(|p| p.info()) {
-        Some(info) => crate::i18n::fmt(tl!("Sends the same area and prompt to {name} again for three more."), &[("name", info.name)]),
+        Some(info) => crate::i18n::fmt(tl!("Sends the same area and prompt to {name} again for {n} more."), &[("name", info.name), ("n", &count.to_string())]),
         None => app.session.disabled_reason(MORE).unwrap_or_default(),
     };
     let enabled = app.session.is_enabled(MORE);
@@ -719,7 +760,7 @@ pub fn variations_section(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
     {
         app.ui.status = e;
     }
-    if more && let Err(e) = app.run(MORE, json!({"layer": group_id.0})) {
+    if more && let Err(e) = app.run(MORE, json!({"layer": group_id.0, "count": count})) {
         app.ui.status = e;
     }
     ui.add_space(6.0);

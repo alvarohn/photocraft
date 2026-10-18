@@ -3,8 +3,8 @@
 //! nothing is ever sent anywhere.
 //!
 //! The selection's bounds plus some surrounding context are rendered (all visible layers, in
-//! sRGB) and sent with a mask of the selection, once per variation (three by default, as
-//! Photoshop makes). The results land in a new group masked by the selection, one layer per
+//! sRGB) and sent with a mask of the selection, once per variation (1 to 4; by default the
+//! provider's: three, as Photoshop makes, for a cloud service). The results land in a new group masked by the selection, one layer per
 //! variation with the first showing, so nothing under it changes and one undo removes it.
 //!
 //! Two modes: `fill` (the default) blurs the selected area out before sending, so the provider
@@ -60,8 +60,8 @@ const LABEL: &str = "Generative Fill";
 /// Longest side sent to the provider; larger areas are scaled down for the request and the
 /// result is scaled back up.
 const UPLOAD_SIDE: u32 = 2048;
-const DEFAULT_VARIATIONS: usize = 3;
-const MAX_VARIATIONS: u64 = 4;
+/// Most variations one fill asks for.
+pub const MAX_VARIATIONS: u64 = 4;
 /// Largest result accepted, per side.
 const RESULT_SIDE: u32 = 8192;
 /// Longest side of a reference image as sent: enough to show an object or a design, small enough
@@ -753,9 +753,10 @@ pub(crate) struct Source {
     reference: Reference,
 }
 
-fn variations_param(p: &Value, key: &str) -> Result<usize> {
+/// `p[key]`, 1 to [`MAX_VARIATIONS`]; absent, the provider's own default.
+fn variations_param(p: &Value, key: &str, provider: &dyn ImageProvider) -> Result<usize> {
     match p.get(key) {
-        None | Some(Value::Null) => Ok(DEFAULT_VARIATIONS),
+        None | Some(Value::Null) => Ok(provider.default_variations().clamp(1, MAX_VARIATIONS as usize)),
         Some(v) => match v.as_u64() {
             Some(n @ 1..=MAX_VARIATIONS) => Ok(n as usize),
             _ => Err(bad(format!("`{key}` must be a whole number from 1 to {MAX_VARIATIONS}"))),
@@ -874,7 +875,6 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
         Some(_) => return Err(bad("`prompt` must be text")),
     };
     photocraft_genai::check_prompt(&prompt, false).map_err(|e| bad(e.to_string()))?;
-    let count = variations_param(p, "variations")?;
     let mode = mode_param(p)?;
     let area_index = area_param(p)?;
     if mode == EditMode::Edit && prompt.is_empty() {
@@ -882,6 +882,7 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
     }
     fill_enabled(s).map_err(bad)?;
     let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider"))?;
+    let count = variations_param(p, "variations", provider.as_ref())?;
     let (caps, provider_name) = (provider.capabilities(), provider.info().name);
     if mode == EditMode::Edit && !caps.edit_in_place {
         return Err(bad(format!("{provider_name} can't edit what is in the selection; use Fill")));
@@ -1144,10 +1145,10 @@ fn more_enabled(s: &Session) -> std::result::Result<(), String> {
 
 fn more(s: &mut Session, p: &Value) -> Result<Value> {
     let bad = |msg: String| EngineError::BadParams { cmd: MORE.into(), msg };
-    let count = variations_param(p, "count").map_err(|_| bad(format!("`count` must be a whole number from 1 to {MAX_VARIATIONS}")))?;
     more_enabled(s).map_err(bad)?;
     let group = generative_target(s, p).ok_or_else(|| bad("select a generative layer first".into()))?;
     let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider".into()))?;
+    let count = variations_param(p, "count", provider.as_ref()).map_err(|_| bad(format!("`count` must be a whole number from 1 to {MAX_VARIATIONS}")))?;
     let source = s.genai_state.sources.get(&group).cloned().ok_or_else(|| bad("select a generative layer first".into()))?;
     let doc = s.active().map(|st| st.doc.id).ok_or(EngineError::NoDocument)?;
     let turns = Arc::clone(&s.genai_state.turns);
@@ -1187,7 +1188,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generative Fill…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":str?,"variations":1..4=3,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing. `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most 4) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to the provider at a time (the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
+            params: r#"{"prompt":str?,"variations":1..4?,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing (`variations` defaults to the provider's: 3 for a cloud service, 1 for a local model). `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most 4) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to the provider at a time (the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
             enabled: fill_enabled,
             run: fill,
             journal: true,
@@ -1207,7 +1208,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generate More",
             menu: &[],
             shortcut: None,
-            params: r#"{"count":1..4=3,"layer":id?} asks the provider for more variations of the active generative layer, with the same image, mask and prompt, and adds them to it. Sends that area to the provider again."#,
+            params: r#"{"count":1..4?,"layer":id?} asks the provider for more variations of the active generative layer, with the same image, mask and prompt, and adds them to it. Sends that area to the provider again."#,
             enabled: more_enabled,
             run: more,
             journal: true,

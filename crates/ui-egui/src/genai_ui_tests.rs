@@ -151,9 +151,9 @@ fn the_prompt_dialog_runs_the_fill_and_remembers_the_prompt() {
     let doc = &app.session.active().unwrap().doc;
     assert_eq!(doc.layers.len(), layers + 1);
     assert_eq!(doc.layers.last().unwrap().name, "a red square");
-    assert_eq!(app.session.prefs().dialogs.get(FILL), Some(&json!({"prompt": "a red square", "mode": "fill", "separate": true})));
+    assert_eq!(app.session.prefs().dialogs.get(FILL), Some(&json!({"prompt": "a red square", "mode": "fill", "separate": true, "variations": {"gemini": 3}})));
     let (cmd, params) = app.session.journal.iter().rev().find(|(c, _)| c == FILL).unwrap();
-    assert_eq!((cmd.as_str(), params), (FILL, &json!({"prompt": "a red square", "mode": "fill"})), "no references: none sent");
+    assert_eq!((cmd.as_str(), params), (FILL, &json!({"prompt": "a red square", "mode": "fill", "variations": 3})), "no references: none sent");
 }
 
 /// An app with the provider set up, an open 64² document with a selection, and the prompt
@@ -196,8 +196,8 @@ fn edit_mode_and_reference_documents_reach_the_command_and_are_remembered() {
     f.insert("prompt".into(), json!("  make it blue "));
     f.insert("references".into(), json!([{"document": green}]));
     crate::dialogs::confirm(&mut app, id).unwrap();
-    assert_eq!(last_fill(&app), json!({"prompt": "make it blue", "mode": "edit", "references": [{"document": green}]}));
-    assert_eq!(app.session.prefs().dialogs.get(FILL), Some(&json!({"prompt": "make it blue", "mode": "edit", "separate": true})));
+    assert_eq!(last_fill(&app), json!({"prompt": "make it blue", "mode": "edit", "variations": 3, "references": [{"document": green}]}));
+    assert_eq!(app.session.prefs().dialogs.get(FILL), Some(&json!({"prompt": "make it blue", "mode": "edit", "separate": true, "variations": {"gemini": 3}})));
     assert_eq!(app.session.active().unwrap().doc.layers.last().unwrap().name, "make it blue");
 
     // The next prompt starts in Edit with the same reference.
@@ -208,13 +208,47 @@ fn edit_mode_and_reference_documents_reach_the_command_and_are_remembered() {
     app.ui.dialog_mut(id).unwrap().fields.insert("prompt".into(), json!(""));
     app.ui.dialog_mut(id).unwrap().fields.insert("references".into(), json!([]));
     crate::dialogs::confirm(&mut app, id).unwrap();
-    assert_eq!(last_fill(&app), json!({"prompt": "", "mode": "fill"}));
-    assert_eq!(app.session.prefs().dialogs.get(FILL), Some(&json!({"prompt": "", "mode": "edit", "separate": true})), "the tab chosen is kept");
+    assert_eq!(last_fill(&app), json!({"prompt": "", "mode": "fill", "variations": 3}));
+    assert_eq!(
+        app.session.prefs().dialogs.get(FILL),
+        Some(&json!({"prompt": "", "mode": "edit", "separate": true, "variations": {"gemini": 3}})),
+        "the tab chosen is kept"
+    );
 
     // A reference to a document that has been closed since is dropped.
     app.genai.references = vec![json!({"document": 987_654_321}), json!({"document": green})];
     let id = open_prompt_dialog(&mut app);
     assert_eq!(fields(&app, id)["references"], json!([{"document": green}]));
+}
+
+/// The number of variations is chosen in the dialog (1 to 4), sent with the fill and remembered
+/// for the provider it was chosen with; Generate More asks for as many.
+#[test]
+fn the_number_of_variations_is_chosen_and_remembered_per_provider() {
+    let store = Store::default();
+    let mut app = prompt_ready(&store);
+    app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(fields(&app, id)["variations"], 3, "the provider's default at first");
+    app.ui.dialog_mut(id).unwrap().fields.insert("variations".into(), json!(1));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(last_fill(&app)["variations"], 1);
+    let group = app.session.generative_layer().unwrap();
+    assert_eq!(app.session.active().unwrap().doc.layer(group).unwrap().children().unwrap().len(), 1);
+    assert_eq!(app.session.prefs().dialogs.get(FILL).unwrap()["variations"], json!({"gemini": 1}));
+    app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(fields(&app, id)["variations"], 1, "the last choice is offered again");
+    // Out of range (a hand-edited preference) falls back to the default; another provider's
+    // choice is kept alongside.
+    app.session.prefs.edit(|p| p.dialogs.insert(FILL.into(), json!({"variations": {"gemini": 9, "other": 2}})));
+    crate::dialogs::cancel(&mut app, id).unwrap();
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(fields(&app, id)["variations"], 3);
+    app.ui.dialog_mut(id).unwrap().fields.insert("variations".into(), json!(4));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(app.session.prefs().dialogs.get(FILL).unwrap()["variations"], json!({"gemini": 4, "other": 2}));
+    assert_eq!(chosen_variations(&app), 4);
 }
 
 #[test]

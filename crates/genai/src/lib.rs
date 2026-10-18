@@ -214,6 +214,11 @@ pub trait ImageProvider: Send + Sync {
     fn edit_aspect(&self, w: u32, h: u32) -> (u32, u32) {
         (w, h)
     }
+    /// How many variations a fill makes when nobody chose: three, as Photoshop makes, for a
+    /// service that answers in seconds. A provider that takes minutes an image says fewer.
+    fn default_variations(&self) -> usize {
+        3
+    }
     fn generate(&self, _request: &GenerateRequest) -> Result<GeneratedImage> {
         Err(GenError::Unsupported(self.info().name))
     }

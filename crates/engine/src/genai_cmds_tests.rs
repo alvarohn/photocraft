@@ -321,6 +321,37 @@ fn a_fill_makes_three_variations_with_the_first_showing() {
     }
 }
 
+/// Without `variations`, a fill makes as many as its provider says (one for a slow local model);
+/// Generate More too.
+#[test]
+fn the_provider_sets_the_default_number_of_variations() {
+    struct Slow(Arc<Fake>);
+    impl ImageProvider for Slow {
+        fn info(&self) -> ProviderInfo {
+            self.0.info()
+        }
+        fn capabilities(&self) -> Capabilities {
+            self.0.capabilities()
+        }
+        fn default_variations(&self) -> usize {
+            1
+        }
+        fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
+            self.0.edit(r)
+        }
+    }
+    let fake = Fake::new([0, 0, 255]);
+    let mut s = session(64, 64);
+    s.execute("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    s.set_image_provider(Some(Arc::new(Slow(fake.clone()))));
+    let r = s.execute(FILL, json!({"prompt": "x"})).unwrap();
+    assert_eq!(r["variations"].as_array().unwrap().len(), 1);
+    let more = s.execute(MORE, json!({})).unwrap();
+    assert_eq!(more["variations"].as_array().unwrap().len(), 1);
+    assert_eq!(s.execute(MORE, json!({"count": 4})).unwrap()["variations"].as_array().unwrap().len(), 4);
+    assert_eq!(fake.sent.lock().unwrap().len(), 6);
+}
+
 #[test]
 fn choosing_a_variation_shows_it_alone_in_one_undo_step() {
     let (mut s, _, r) = filled(None);
