@@ -4301,3 +4301,7 @@ navigator	Zoom	Zoom
 	Generative Batch failed: {error}	El lote generativo falló: {error}
 	Generative Batch cancelled; the files already written are kept.	Lote generativo cancelado; se conservan los archivos ya escritos.
 	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Los ajustes de IA generativa solo se pueden cambiar desde PhotoCraft, no por automatización.
+	{model} doesn't take reference images: they aren't sent.	{model} no usa imágenes de referencia: no se envían.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} admite {max} imágenes de referencia aquí: se envían las primeras {max}.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} no edita lo que hay en la selección: la rellena a partir de la descripción.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} no edita imágenes a partir de instrucciones, y el lote generativo lo necesita: elige un modelo que lo haga, como Gemini, OpenAI o Qwen Image 2.1 Turbo.

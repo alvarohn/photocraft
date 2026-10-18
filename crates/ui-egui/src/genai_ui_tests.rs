@@ -29,7 +29,9 @@ impl ImageProvider for Fake {
         ProviderInfo { id: self.id, name, model: self.model.clone(), host: "example.invalid" }
     }
     fn capabilities(&self) -> Capabilities {
-        Capabilities { generate: false, edit: true, variations: false, edit_in_place: true, max_references: 4 }
+        // Z-Image Turbo fills from a description only, as the real preset.
+        let edits = self.model != "z-image-turbo";
+        Capabilities { generate: false, edit: true, variations: false, edit_in_place: edits, max_references: if edits { 4 } else { 0 } }
     }
     fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
         let (w, h) = photocraft_genai::png_size(&r.image).unwrap();
@@ -938,4 +940,125 @@ fn a_tags_cancel_takes_the_click_from_the_canvas() {
     h.run_steps(4);
     assert!(h.state().session.active().unwrap().history.past_len() > history, "a click on the canvas paints");
     h.state_mut().session.cancel_all_jobs();
+}
+
+/// Gemini (its key saved) in use, and the local server set up once in Settings.
+fn two_providers(store: &Store) -> PhotocraftApp {
+    let mut app = prompt_ready(store);
+    let id = open_settings(&mut app);
+    pick_provider(&mut app, id, "sdcpp");
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    switch_provider(&mut app, "gemini", "m").unwrap();
+    app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    app
+}
+
+/// The Generative Fill window chooses the provider and model among those set up, for every fill
+/// to come (kept as the settings' choice, each provider's options as they were), and says there
+/// what the model won't do of what was asked; automation can't choose.
+#[test]
+fn the_fill_window_chooses_the_provider_and_model() {
+    let store = Store::default();
+    let mut app = two_providers(&store);
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(app.genai.configured, ["gemini", "sdcpp"], "OpenAI has no key yet: not offered");
+    let doc = app.session.active().unwrap().doc.id.0;
+    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+    f.insert("mode".into(), json!("edit"));
+    f.insert("prompt".into(), json!("a red boat"));
+    f.insert("references".into(), json!([{"document": doc}]));
+
+    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+    let p = app.session.image_provider().unwrap().info();
+    assert_eq!((p.id, p.model.as_str()), ("sdcpp", "z-image-turbo"));
+    let pref = app.session.prefs().dialogs.get(PREF).unwrap().clone();
+    assert_eq!((pref["provider"].as_str(), pref["model"].as_str()), (Some("sdcpp"), Some("z-image-turbo")));
+    assert_eq!(pref["options"]["gemini"]["model"], "m", "Gemini's model is kept for switching back");
+    // Z-Image Turbo doesn't edit or take references: the fill fills, sends none, and the window
+    // keeps them for next time.
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    let sent = last_fill(&app);
+    assert_eq!(sent["mode"], "fill");
+    assert!(sent.get("references").is_none(), "{sent}");
+    assert_eq!(app.genai.references, [json!({"document": doc})]);
+
+    // A key saved for OpenAI since: offered the next time the window opens.
+    store.borrow_mut().insert("openai".into(), SECRET.into());
+    app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    open_prompt_dialog(&mut app);
+    assert_eq!(app.genai.configured, ["gemini", "openai", "sdcpp"]);
+
+    // Not from automation; a provider that can't be built leaves the one in use.
+    app.automation_input = true;
+    assert!(switch_provider(&mut app, "gemini", "m").unwrap_err().contains("automation"));
+    app.automation_input = false;
+    store.borrow_mut().remove("gemini");
+    assert!(switch_provider(&mut app, "gemini", "m").is_err());
+    assert_eq!(app.session.image_provider().unwrap().info().id, "sdcpp");
+    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["provider"], "sdcpp");
+}
+
+/// File › Automate › Generative Batch… opens with any provider, says in the window when the model
+/// can't edit images from instructions, and won't start until another is chosen there.
+#[test]
+fn the_batch_window_says_when_the_model_cannot_run_it() {
+    let store = Store::default();
+    let mut app = two_providers(&store);
+    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+    assert!(crate::menus::menu_items(&app).iter().any(|i| i.id == photocraft_engine::genai_cmds::BATCH));
+    let ctx = egui::Context::default();
+    let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+    app.ui.dialog_mut(id).unwrap().fields.insert("prompt".into(), json!("warmer"));
+    let e = crate::dialogs::confirm(&mut app, id).unwrap_err();
+    assert!(e.contains("doesn't edit images from instructions"), "{e}");
+    switch_provider(&mut app, "sdcpp", "qwen-image-2.1-turbo").unwrap();
+    let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
+    let out = std::env::temp_dir().join(format!("photocraft-genai-batch-model-{}", std::process::id()));
+    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+    f.insert("prompt".into(), json!("warmer"));
+    f.insert("output".into(), json!(out.to_string_lossy()));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    let _ = std::fs::remove_dir_all(out);
+}
+
+/// Renders both windows with the local server's Z-Image Turbo chosen, its notes showing
+/// (`GENAI_SNAPSHOT_DIR=… cargo test` saves a look).
+#[test]
+fn the_provider_pickers_render() {
+    let store = Store::default();
+    let store2 = store.clone();
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
+        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = two_providers(&store2);
+        let id = open_prompt_dialog(&mut app);
+        let doc = app.session.active().unwrap().doc.id.0;
+        let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+        f.insert("mode".into(), json!("edit"));
+        f.insert("references".into(), json!([{"document": doc}]));
+        switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+        app
+    });
+    h.run_steps(6);
+    h.get_by_label("Provider");
+    h.get_by_label("Model");
+    h.get_by_label("z-image-turbo doesn't edit what is in the selection: it fills the selection from the description.");
+    h.get_by_label("z-image-turbo doesn't take reference images: they aren't sent.");
+    assert!(h.query_by_label("Edit selection").is_none());
+    h.get_by_label("Empty: removes what is selected and continues the image through it.");
+    assert!(h.query_by_label("The reference images are sent too, at most 1024 pixels on their long side.").is_none());
+    let dir = std::env::var_os("GENAI_SNAPSHOT_DIR");
+    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+        img.save(std::path::Path::new(dir).join("genai-prompt-pickers.png")).unwrap();
+    }
+    let prompt = h.state().ui.dialogs[0].id;
+    crate::dialogs::cancel(h.state_mut(), prompt).unwrap();
+    let ctx = h.ctx.clone();
+    crate::menus::invoke(h.state_mut(), &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap();
+    h.run_steps(6);
+    h.get_by_label(
+        "z-image-turbo doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.",
+    );
+    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+        img.save(std::path::Path::new(dir).join("genai-batch-pickers.png")).unwrap();
+    }
 }

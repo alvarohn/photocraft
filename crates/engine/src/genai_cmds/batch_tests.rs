@@ -235,8 +235,9 @@ fn bad_params_and_unsuited_providers_fail_before_anything_is_sent() {
     assert_eq!(r["written"].as_array().unwrap().len(), 1);
     // A model that doesn't edit from instructions can't run it, and none at all.
     let mut s = session_with(Arc::new(Fake { edits: false, ..fake() }));
-    assert!(!s.is_enabled(BATCH));
-    assert!(s.execute(BATCH, json!({"prompt": "x", "files": [file]})).is_err());
+    assert!(s.is_enabled(BATCH), "enabled: its window can switch to a model that does");
+    let e = s.execute(BATCH, json!({"prompt": "x", "files": [file]})).unwrap_err().to_string();
+    assert!(e.contains("choose a model that edits from instructions"), "{e}");
     let mut s = Session::new();
     assert!(s.execute(BATCH, json!({"prompt": "x", "files": [file]})).is_err());
     let _ = std::fs::remove_dir_all(dir);

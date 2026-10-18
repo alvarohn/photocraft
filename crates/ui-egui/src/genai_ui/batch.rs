@@ -47,6 +47,7 @@ fn open(app: &mut PhotocraftApp) -> u64 {
         _ if documents.is_empty() => "folder",
         _ => "documents",
     };
+    app.genai.configured = super::set_up_providers(app);
     let look = last.get("sameLookPrompt").and_then(Value::as_str).filter(|t| !t.trim().is_empty()).unwrap_or(gb::SAME_LOOK_PROMPT).to_owned();
     let mut f = Map::new();
     f.insert(MARK.into(), json!(true));
@@ -62,6 +63,20 @@ fn open(app: &mut PhotocraftApp) -> u64 {
     f.insert("sameLookPrompt".into(), json!(look));
     f.insert("output".into(), json!(text("output")));
     app.ui.open_dialog(DialogKind::Command, f)
+}
+
+/// Why the chosen model can't run a batch (it doesn't edit whole images from instructions), if so.
+fn cannot_run(app: &PhotocraftApp) -> Option<String> {
+    let p = app.session.image_provider()?;
+    if p.capabilities().edit_in_place {
+        return None;
+    }
+    Some(crate::i18n::fmt(
+        tl!(
+            "{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo."
+        ),
+        &[("model", &p.info().model)],
+    ))
 }
 
 /// How many reference images the user may add: the provider's, less one for Same look's.
@@ -120,6 +135,13 @@ pub(super) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
         ui.label(egui::RichText::new(text).font(crate::theme::semibold(12.5)).color(t.text));
     };
     ui.set_min_width(460.0);
+    super::provider_rows(app, ui, f, "batch");
+    if let Some(why) = cannot_run(app) {
+        super::warn(ui, &why);
+    } else {
+        super::references_note(app, ui, f, room(app, f));
+    }
+    ui.add_space(8.0);
     section(ui, tl!("Images"));
     let folder_mode = f.get("source").and_then(Value::as_str) == Some("folder");
     ui.horizontal(|ui| {
@@ -239,6 +261,9 @@ pub(super) fn body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
 pub(super) fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value, String> {
     let text = |k: &str| f.get(k).and_then(Value::as_str).unwrap_or("").trim().to_owned();
     let (prompt, output, folder) = (text("prompt"), text("output"), text("folder"));
+    if let Some(why) = cannot_run(app) {
+        return Err(why);
+    }
     if prompt.is_empty() {
         return Err(tl!("Say what to change in each image.").into());
     }
@@ -248,7 +273,7 @@ pub(super) fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result
     let variations = f.get("variations").and_then(Value::as_u64).unwrap_or_else(|| super::chosen_variations(app));
     let remembered = json!({"prompt": prompt, "source": text("source"), "folder": folder, "output": output, "sameLook": same_look, "sameLookPrompt": text("sameLookPrompt")});
     app.session.prefs.edit(|p| p.dialogs.insert(BATCH.into(), remembered));
-    app.genai.references = references.clone();
+    app.genai.references = super::references_of(f).into_iter().filter(|r| super::reference_name(app, r).is_some()).collect();
     let mut params = Map::new();
     params.insert("prompt".into(), json!(prompt));
     params.insert("variations".into(), json!(variations));

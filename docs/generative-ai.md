@@ -11,9 +11,17 @@ the maintainers asked for in issue #41.
    tools' Generative Fill… button). Pick a provider (Google Gemini, OpenAI, or a stable-diffusion.cpp
    server of your own) and model, paste an API key (the local server takes none), set the
    provider's options, and read what is sent before pressing OK. Each provider
-   keeps its own model, options and key, so switching back and forth loses nothing.
-2. Make a selection, then Edit › Generative Fill… (or the options bar button). The dialog has two
-   modes, as tabs:
+   keeps its own model, options and key, so switching back and forth loses nothing. Set up each
+   provider you want to use once (its key; for the local server, OK once with its address).
+2. Make a selection, then Edit › Generative Fill… (or the options bar button). At the top,
+   **Provider** and **Model** choose what this fill and the ones after it use, among the
+   providers set up (those with a key saved, the local server once its settings were saved);
+   the choice is kept, as if made in Generative AI Settings, and the button beside them opens
+   those settings (keys, the server's address, the finer options). When the model chosen won't
+   do something the window asks for, it says so there, in the warning colour: a model that
+   doesn't edit (Z-Image Turbo) runs Edit as Fill, and one that takes no reference images (or
+   fewer) doesn't get them (they stay in the window for next time). The dialog has two modes, as
+   tabs:
    - **Fill selection** (the default): describe what to put there, or leave the prompt empty to
      continue the surrounding image through it (anything that runs into the selection carries on
      and partly covered objects are completed). This is what removes things.
@@ -48,13 +56,17 @@ the maintainers asked for in issue #41.
      to an area, retry, cancel).
 
    At most 5 fills talk to the provider at once (each sends one request per variation, and the
-   service limits how many it takes a minute); the rest wait their turn in order. A request the service turns
+   service limits how many it takes a minute; a local server takes one); the rest wait their
+   turn in order. Each provider has its own turns, so a fill sent to a service doesn't wait for
+   one generating on a local server. A request the service turns
    down for its rate limit is sent again after 4, 8 and 16 s. The result lands where it was
    started, on its own document, without becoming the active layer, so whatever the user is
    doing meanwhile goes on; it is one undo step of its own, and a later one lands right above the
    same layer, under the earlier ones. It is dropped if the canvas changed size meanwhile (it
    would no longer line up) or the document was closed. A fill that failed (no network, the
-   service refused it) keeps its tag and row until Retry (sent again exactly as started) or ✕.
+   service refused it) keeps its tag and row until Retry (sent again exactly as started, to the
+   provider and model it was made with: with another chosen since, Retry says which to choose
+   again) or ✕.
 
    **Several objects at once.** Select them together (⇧ adds to the selection) and the dialog
    offers *Fill each of the n separate areas on its own* (on by default, up to 16 areas): each
@@ -63,11 +75,13 @@ the maintainers asked for in issue #41.
 4. With the group (or one of its variations) active, Properties › Variations shows a thumbnail
    per variation: click one to show it alone (`layer.generative.selectVariation`, one undo step).
    Generate More sends the same image, mask, prompt, mode and reference images again and adds
-   as many more as the last fill made with that provider (`layer.generative.more`).
+   as many more as the last fill made with that provider (`layer.generative.more`), to the
+   provider and model the group was made with (with another chosen since, it says which).
 
-5. **File › Automate › Generative Batch…** (once a provider that edits from instructions is set
-   up: Gemini, OpenAI, or a local edit model such as Qwen Image 2.1) runs the same edit on many
-   images:
+5. **File › Automate › Generative Batch…** (once a provider is set up) runs the same edit on many
+   images. Provider and Model sit at its top as in the Generative Fill window; the batch needs a
+   model that edits from instructions (Gemini, OpenAI, or a local edit model such as Qwen Image
+   2.1), and with one that doesn't (Z-Image Turbo) the window says so and won't start:
    - *Images*: the open documents, or a folder's image files; tick which.
    - *What to change*: the prompt (required). Each image is edited whole, as Edit selection does
      with all of it selected; reference images and the number of variations as in the prompt
@@ -323,7 +337,7 @@ before.
 | `crates/engine/src/genai_cmds/queue.rs` | Turns at the provider (at most 5 fills at once, in order) and the pauses after a rate-limit answer. |
 | `crates/engine/src/genai_cmds/areas.rs` | A selection's separate areas (8-connected parts, on a grid of at most a million cells) and the mask of one of them. |
 | `crates/engine/src/jobs.rs` (`run_on`) | A job that edits a document without locking it: the fills' jobs. |
-| `crates/ui-egui/src/genai_ui.rs` | Generative AI Settings, the prompt dialog (Fill / Edit tabs, reference images, each area on its own, variations, cost), the options bar button, Properties › Variations, `restore` at launch. |
+| `crates/ui-egui/src/genai_ui.rs` | Generative AI Settings, the prompt dialog (provider and model, Fill / Edit tabs, reference images, each area on its own, variations, cost, what the model won't do), the options bar button, Properties › Variations, `restore` at launch. |
 | `crates/ui-egui/src/genai_ui/batch.rs` | File › Automate › Generative Batch…: the dialog, and the notice when a batch ends. |
 | `crates/ui-egui/src/genai_ui/providers.rs` | The providers the settings offer and each one's rows (model, key, options), notes and what is sent; preferences `{"provider", "model", "options": {<provider>: {…}}}`. |
 | `crates/ui-egui/src/genai_ui/pending.rs` | Fills in progress: the canvas shimmer, outline and tags, the Layers panel's "Generating…" rows, the status bar's readout and list, the flash when one lands. |

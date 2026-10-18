@@ -86,13 +86,21 @@ fn account_failure(e: &GenError) -> bool {
     matches!(e, GenError::Auth | GenError::Account(_) | GenError::Quota | GenError::Http { status: 402, .. })
 }
 
+/// Any provider that fills: its window can switch to a model that edits from instructions,
+/// which running it needs ([`edits_whole_images`]).
 fn batch_enabled(s: &Session) -> std::result::Result<(), String> {
     let p = s.image_provider().ok_or("set up a generative AI provider first (Generative AI Settings)")?;
-    let caps = p.capabilities();
-    if !caps.edit || !caps.edit_in_place {
-        return Err(format!("{} ({}) can't edit whole images from a prompt; choose a model that edits from instructions", p.info().name, p.info().model));
+    if !p.capabilities().edit {
+        return Err(format!("{} can't edit images", p.info().name));
     }
     Ok(())
+}
+
+fn edits_whole_images(p: &dyn ImageProvider) -> Result<()> {
+    if p.capabilities().edit_in_place {
+        return Ok(());
+    }
+    Err(bad(format!("{} ({}) can't edit whole images from a prompt; choose a model that edits from instructions", p.info().name, p.info().model)))
 }
 
 /// The file name part of `path` and the folder it is in.
@@ -110,6 +118,7 @@ fn join(dir: &str, name: &str) -> String {
 fn batch(s: &mut Session, p: &Value) -> Result<Value> {
     batch_enabled(s).map_err(bad)?;
     let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider"))?;
+    edits_whole_images(provider.as_ref())?;
     let prompt = match p.get("prompt") {
         Some(Value::String(t)) if !t.trim().is_empty() => t.trim().to_owned(),
         _ => return Err(bad("say what to change in each image (`prompt`)")),
@@ -150,7 +159,7 @@ fn batch(s: &mut Session, p: &Value) -> Result<Value> {
     };
     let items = items_param(s, p, output.as_deref())?;
     let ask = Ask { prompt, references, count, same_look };
-    let turns = Arc::clone(&s.genai_state.turns);
+    let turns = s.genai_state.turns(provider.as_ref());
     crate::jobs::run(s, LABEL, false, move |ctx| run_batch(ctx, provider.as_ref(), &turns, &items, &ask), |_, summary| Ok(summary))
 }
 

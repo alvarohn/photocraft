@@ -59,6 +59,9 @@ pub struct Runtime {
     pending: pending::Pending,
     /// The files the last Generative Batch couldn't do: the batch dialog ticks only them next.
     batch_failed: Vec<String>,
+    /// The providers set up (a key saved, or the local server's settings), as of the last time
+    /// the Generative Fill or Batch window opened or the settings were saved: their Provider list.
+    configured: Vec<String>,
 }
 
 /// A reference image's preview: decoded when it was added, uploaded on first draw.
@@ -127,11 +130,12 @@ pub fn menu_visible(app: &PhotocraftApp) -> bool {
 }
 
 /// Is menu item `id` shown? Edit › Generative Fill and File › Automate › Generative Batch only
-/// once a provider can run them; every other item, yes.
+/// once a provider is set up; every other item, yes.
 pub fn menu_item_visible(app: &PhotocraftApp, id: &str) -> bool {
     match id {
         FILL => menu_visible(app),
-        photocraft_engine::genai_cmds::BATCH => app.session.image_provider().is_some_and(|p| p.capabilities().edit_in_place),
+        // Shown with any provider: its window can switch to a model that edits from instructions.
+        photocraft_engine::genai_cmds::BATCH => menu_visible(app),
         _ => true,
     }
 }
@@ -185,6 +189,7 @@ fn open_prompt(app: &mut PhotocraftApp) -> u64 {
     let references: Vec<Value> = app.genai.references.iter().filter(|r| reference_name(app, r).is_some()).cloned().collect();
     // Previews of references no longer offered go; an open document's is made afresh.
     app.genai.previews.retain(|key, _| references.iter().any(|r| reference_key(r) == *key && r.get("path").is_some()));
+    app.genai.configured = set_up_providers(app);
     let mut f = Map::new();
     f.insert(PROMPT_MARK.into(), json!(true));
     f.insert("__label".into(), json!("Generative Fill"));
@@ -210,6 +215,107 @@ fn chosen_variations(app: &PhotocraftApp) -> u64 {
 fn prompt_capabilities(app: &PhotocraftApp) -> (bool, usize) {
     let caps = app.session.image_provider().map(|p| p.capabilities()).unwrap_or_default();
     (caps.edit_in_place, caps.max_references.min(photocraft_genai::REFERENCES_LIMIT))
+}
+
+/// The providers set up for use: those with a key in the credential store, the local server once
+/// its settings were saved, and the one in use. Read when a window opens (the store, once).
+fn set_up_providers(app: &PhotocraftApp) -> Vec<String> {
+    let Some(services) = app.services.genai.as_ref() else { return Vec::new() };
+    let (current, _) = saved(app);
+    let ready = |id: &str| {
+        if !providers::needs_key(id) {
+            return providers::has_saved_options(app, id);
+        }
+        (services.load_key)(id).ok().flatten().is_some_and(|k| !k.trim().is_empty())
+    };
+    providers::list().into_iter().map(|(id, _)| id).filter(|id| !id.is_empty() && (*id == current || ready(id))).collect()
+}
+
+/// Use `provider` and `model` for the fills to come, as chosen in the Generative Fill or Batch
+/// window: kept as Generative AI Settings' choice (each provider's options and key as they were)
+/// and installed at once. Never from automation, as for the settings.
+fn switch_provider(app: &mut PhotocraftApp, provider: &str, model: &str) -> Result<(), String> {
+    if app.automation_input || app.session.authorize.is_some() {
+        return Err(tl!("Generative AI Settings can only be changed in PhotoCraft itself, not by automation.").into());
+    }
+    let before = app.session.prefs().dialogs.get(PREF).cloned();
+    let chosen = providers::remembered(app, provider, model, &providers::saved_options(app, provider));
+    app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), chosen));
+    if let Err(e) = restore(app) {
+        // Back to the one in use.
+        app.session.prefs.edit(|p| match before {
+            Some(v) => p.dialogs.insert(PREF.into(), v),
+            None => p.dialogs.remove(PREF),
+        });
+        let _ = restore(app);
+        return Err(e);
+    }
+    Ok(())
+}
+
+/// Provider and model, at the top of the Generative Fill and Batch windows: chosen there for the
+/// fills to come (Generative AI Settings, behind the button beside them, keep the keys, the
+/// server's address and the finer options). `salt` keeps each window's lists apart.
+fn provider_rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>, salt: &str) {
+    let (mut provider, _) = saved(app);
+    if provider.is_empty() {
+        return;
+    }
+    let mut model = providers::saved_model(app, &provider);
+    let all = providers::list();
+    let listed: Vec<(String, &str)> =
+        all.iter().filter(|(id, _)| *id == provider || app.genai.configured.contains(id)).map(|(id, name)| (id.clone(), *name)).collect();
+    let models = providers::model_list(&provider);
+    let mut chosen = None;
+    let mut settings = false;
+    egui::Grid::new(("genai-pick", salt)).num_columns(2).spacing([10.0, 6.0]).show(ui, |ui| {
+        ui.label(tl!("Provider"));
+        ui.horizontal(|ui| {
+            if crate::widgets::dropdown(ui, &format!("genai-{salt}-provider"), &mut provider, &listed, 220.0) {
+                chosen = Some((provider.clone(), providers::saved_model(app, &provider)));
+            }
+            settings = crate::icons::button(ui, "settings", 22.0, false, tl!("Generative AI Settings…")).clicked();
+        });
+        ui.end_row();
+        ui.label(tl!("Model"));
+        if crate::widgets::dropdown(ui, &format!("genai-{salt}-model"), &mut model, &models, 220.0) {
+            chosen = Some((provider.clone(), model.clone()));
+        }
+        ui.end_row();
+    });
+    if let Some((provider, model)) = chosen {
+        match switch_provider(app, &provider, &model) {
+            // The number of variations is the one last chosen with that provider.
+            Ok(()) => {
+                f.insert("variations".into(), json!(chosen_variations(app)));
+            }
+            Err(e) => crate::notices::error(app, e),
+        }
+    }
+    if settings {
+        open_settings(app);
+    }
+}
+
+/// A line in the warning colour: something asked for that the chosen model won't do.
+fn warn(ui: &mut egui::Ui, text: &str) {
+    let t = crate::theme::Tokens::get(ui.ctx());
+    ui.add(egui::Label::new(egui::RichText::new(text).color(t.warning).size(12.0)).wrap());
+}
+
+/// The reference images the window holds that the chosen model won't get (`max`: how many it
+/// takes there): said in the window, not when the fill fails.
+fn references_note(app: &PhotocraftApp, ui: &mut egui::Ui, f: &Map<String, Value>, max: usize) {
+    let Some(model) = app.session.image_provider().map(|p| p.info().model) else { return };
+    let n = references_of(f).iter().filter(|r| reference_name(app, r).is_some()).count();
+    if n > 0 && max == 0 {
+        warn(ui, &crate::i18n::fmt(tl!("{model} doesn't take reference images: they aren't sent."), &[("model", &model)]));
+    } else if n > max {
+        warn(
+            ui,
+            &crate::i18n::fmt(tl!("{model} takes {max} reference images here: the first {max} are sent."), &[("model", &model), ("max", &max.to_string())]),
+        );
+    }
 }
 
 /// A `references` entry's identity, for its preview.
@@ -400,7 +506,17 @@ fn references_section(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<St
 }
 
 fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) {
+    provider_rows(app, ui, f, "fill");
     let (can_edit, max_references) = prompt_capabilities(app);
+    // What was asked for last time (or with another model) that this one won't do.
+    if !can_edit
+        && f.get("mode").and_then(Value::as_str) == Some("edit")
+        && let Some(model) = app.session.image_provider().map(|p| p.info().model)
+    {
+        warn(ui, &crate::i18n::fmt(tl!("{model} doesn't edit what is in the selection: it fills the selection from the description."), &[("model", &model)]));
+    }
+    references_note(app, ui, f, max_references);
+    ui.add_space(8.0);
     let mut prompt = f.get("prompt").and_then(Value::as_str).unwrap_or("").to_owned();
     if can_edit {
         mode_tabs(ui, f);
@@ -429,7 +545,8 @@ fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, V
     // An empty prompt always runs Fill: Edit needs something to change.
     if prompt.trim().is_empty() {
         ui.add_space(2.0);
-        if references_of(f).is_empty() {
+        // References the model doesn't take aren't sent: then it removes too.
+        if references_of(f).is_empty() || max_references == 0 {
             faint(ui, tl!("Empty: removes what is selected and continues the image through it."));
         } else {
             faint(ui, tl!("Empty: places what the reference images show in the selection."));
@@ -464,7 +581,7 @@ fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, V
                 &[("name", info.name), ("model", &info.model)],
             ),
         );
-        if !references_of(f).is_empty() {
+        if max_references > 0 && !references_of(f).is_empty() {
             faint(ui, tl!("The reference images are sent too, at most 1024 pixels on their long side."));
         }
     }
@@ -558,7 +675,8 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
         }
         let remembered = json!({"prompt": prompt, "mode": chosen, "separate": separate, "variations": per_provider});
         app.session.prefs.edit(|p| p.dialogs.insert(FILL.into(), remembered));
-        app.genai.references = references.clone();
+        // The window's references are offered again, also those this model didn't get.
+        app.genai.references = references_of(f).into_iter().filter(|r| reference_name(app, r).is_some()).collect();
         // Edit needs something to change: with no prompt it removes, as Fill does.
         let mode = if prompt.is_empty() { "fill" } else { chosen };
         let mut params = Map::new();
@@ -616,6 +734,7 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
     let remembered = providers::remembered(app, &provider, &model, &options);
     app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), remembered));
     restore(app)?;
+    app.genai.configured = set_up_providers(app);
     Ok(json!({"provider": provider, "model": model, "ready": app.session.image_provider().is_some()}))
 }
 

@@ -33,6 +33,11 @@ fn models(provider: &str) -> &'static [(&'static str, &'static str)] {
     }
 }
 
+/// `provider`'s models, as dropdown options.
+pub(super) fn model_list(provider: &str) -> Vec<(String, &'static str)> {
+    models(provider).iter().map(|(id, name)| ((*id).to_owned(), *name)).collect()
+}
+
 pub(super) fn default_model(provider: &str) -> &'static str {
     match provider {
         openai::ID => openai::DEFAULT_MODEL,
@@ -54,6 +59,11 @@ fn key_page(provider: &str) -> Option<(&'static str, &'static str)> {
 pub(super) fn saved_options(app: &PhotocraftApp, provider: &str) -> Value {
     let v = app.session.prefs().dialogs.get(super::PREF).and_then(|v| v.get("options")).and_then(|o| o.get(provider));
     v.filter(|v| v.is_object()).cloned().unwrap_or_else(|| json!({}))
+}
+
+/// Were `provider`'s settings ever saved (for the local server: its address)?
+pub(super) fn has_saved_options(app: &PhotocraftApp, provider: &str) -> bool {
+    app.session.prefs().dialogs.get(super::PREF).and_then(|v| v.get("options")).and_then(|o| o.get(provider)).is_some_and(Value::is_object)
 }
 
 /// The model saved for `provider`: the current one if it is the chosen provider, else the one it
@@ -120,8 +130,7 @@ pub(super) fn rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
     }
     ui.label(tl!("Model"));
     let mut model = f.get("model").and_then(Value::as_str).unwrap_or(default_model(provider)).to_owned();
-    let list: Vec<(String, &str)> = models(provider).iter().map(|(id, name)| ((*id).to_owned(), *name)).collect();
-    if crate::widgets::dropdown(ui, "genai-model", &mut model, &list, 220.0) {
+    if crate::widgets::dropdown(ui, "genai-model", &mut model, &model_list(provider), 220.0) {
         f.insert("model".into(), json!(model));
     }
     ui.end_row();

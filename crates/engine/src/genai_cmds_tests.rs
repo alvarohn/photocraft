@@ -1020,3 +1020,74 @@ fn a_provider_that_takes_one_at_a_time_queues_fills_and_reports_progress() {
     assert_eq!(fake.peak.load(Ordering::SeqCst), 1);
     assert_eq!(doc(&s).layers.len(), 3);
 }
+
+/// `inner` under another provider id, taking at most `parallel` requests at a time.
+struct Renamed {
+    inner: Arc<Fake>,
+    id: &'static str,
+    parallel: Option<usize>,
+}
+
+impl ImageProvider for Renamed {
+    fn info(&self) -> ProviderInfo {
+        ProviderInfo { id: self.id, ..self.inner.info() }
+    }
+    fn capabilities(&self) -> Capabilities {
+        self.inner.capabilities()
+    }
+    fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
+        self.inner.edit(r)
+    }
+    fn max_parallel(&self) -> Option<usize> {
+        self.parallel
+    }
+}
+
+#[test]
+fn each_provider_has_its_own_turns() {
+    // A service's fill is generating; a local server (one at a time) starts at once anyway.
+    let mut s = session(200, 100);
+    let cloud = slow(600);
+    s.set_image_provider(Some(cloud.clone()));
+    s.execute("select.rect", json!({"x": 5, "y": 10, "width": 20, "height": 20})).unwrap();
+    let first = started(&mut s, FILL, json!({"prompt": "cloud", "variations": 1}));
+    s.set_image_provider(Some(Arc::new(Renamed { inner: Fake::new([0, 0, 255]), id: "local", parallel: Some(1) })));
+    s.execute("select.rect", json!({"x": 100, "y": 10, "width": 20, "height": 20})).unwrap();
+    let second = started(&mut s, FILL, json!({"prompt": "local", "variations": 1}));
+    s.wait_job(second).unwrap();
+    assert_eq!(s.generative_fills().len(), 1, "the service's fill is still generating");
+    assert_eq!(rgb_at(&s, 110, 20), [0, 0, 255]);
+    s.wait_job(first).unwrap();
+    assert_eq!(rgb_at(&s, 15, 20), [255, 0, 0]);
+}
+
+#[test]
+fn retry_and_generate_more_go_only_to_the_provider_and_model_they_were_made_with() {
+    let mut s = session(64, 64);
+    s.set_image_provider(Some(Arc::new(Fake { fail: Some(GenError::Network("offline".into())), ..Arc::into_inner(Fake::new([0, 0, 0])).unwrap() })));
+    s.execute("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
+    let job = started(&mut s, FILL, json!({"prompt": "x", "variations": 1}));
+    let _ = s.wait_job(job);
+    let id = s.generative_fills()[0].id;
+    // Another provider was chosen since: its request isn't sent there.
+    let other = Fake::new([0, 0, 255]);
+    s.set_image_provider(Some(Arc::new(Renamed { inner: other.clone(), id: "other", parallel: None })));
+    let e = s.execute(RETRY, json!({"fill": id})).unwrap_err().to_string();
+    assert!(e.contains("made with Fake (fake-1)"), "{e}");
+    assert_eq!(s.generative_fills()[0].state, "failed", "still waiting for Retry or Discard");
+    // Chosen again (a new key, say): Retry sends it.
+    let fake = Fake::new([0, 255, 0]);
+    s.set_image_provider(Some(fake.clone()));
+    let again = started(&mut s, RETRY, json!({"fill": id}));
+    let landed = s.wait_job(again).unwrap();
+    assert_eq!(rgb_at(&s, 16, 16), [0, 255, 0]);
+    // Generate More, the same.
+    s.active_mut().unwrap().active_layer = Some(LayerId(landed["layer"].as_u64().unwrap()));
+    s.set_image_provider(Some(Arc::new(Renamed { inner: other.clone(), id: "other", parallel: None })));
+    let e = s.execute(MORE, json!({"count": 1})).unwrap_err().to_string();
+    assert!(e.contains("made with Fake (fake-1)"), "{e}");
+    assert!(other.sent.lock().unwrap().is_empty(), "nothing was sent to the other provider");
+    s.set_image_provider(Some(fake.clone()));
+    s.execute(MORE, json!({"count": 1})).unwrap();
+    assert_eq!(fake.sent.lock().unwrap().len(), 2);
+}

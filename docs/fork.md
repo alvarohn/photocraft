@@ -40,6 +40,12 @@ repository doesn't have, so merging it stays easy.
   images) and **a local stable-diffusion.cpp server** (`sd-server`, no key: Z-Image Turbo, Qwen
   Image 2.1 Turbo, or another model; one request at a time, a small working size scaled back up,
   progress by sampling step). New file for it: `crates/genai/src/sdcpp.rs`.
+- **Provider and model in the fill windows**, the fork's own too (2026-10-18, after a first try
+  on the owner's PC): Generative Fill and Generative Batch choose the provider and model at their
+  top, among those set up, kept as the settings' choice; Generative AI Settings keep the keys,
+  the server's address and the finer options. Each window says there what the model won't do of
+  what it asks (Edit, reference images, a batch). Each provider has its own turns, and Retry and
+  Generate More go only to the provider and model a fill was made with.
 - **Generative Batch** (File › Automate › Generative Batch…), the fork's own too (2026-10-18): the
   same edit for the open documents or a folder's images, results as JPEGs in an `IA` folder
   beside each image, *Same look in all* (the first result guides the others), stopping after two

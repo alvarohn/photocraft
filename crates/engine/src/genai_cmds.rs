@@ -129,8 +129,43 @@ pub(crate) struct GenState {
     /// Fills that haven't landed.
     fills: Vec<Fill>,
     next_fill: u64,
-    /// Turns at the provider, shared by every fill and Generate More.
-    turns: Arc<queue::Turns>,
+    /// Turns at each provider (by id), shared by every fill, Generate More and batch sent to it:
+    /// a local server's one turn is no reason for a service's fills to wait.
+    turns: std::collections::HashMap<&'static str, Arc<queue::Turns>>,
+}
+
+impl GenState {
+    /// `provider`'s turns.
+    fn turns(&mut self, provider: &dyn ImageProvider) -> Arc<queue::Turns> {
+        Arc::clone(self.turns.entry(provider.info().id).or_default())
+    }
+}
+
+/// The provider, model and abilities a fill was made with: its request was made for that one
+/// (its sizes, its mode, its references), so Retry and Generate More send it there only.
+#[derive(Clone, Debug, PartialEq)]
+struct MadeWith {
+    id: &'static str,
+    name: &'static str,
+    model: String,
+    caps: photocraft_genai::Capabilities,
+}
+
+impl MadeWith {
+    fn of(p: &dyn ImageProvider) -> Self {
+        let info = p.info();
+        MadeWith { id: info.id, name: info.name, model: info.model, caps: p.capabilities() }
+    }
+}
+
+/// The configured provider if it is the one `made` was made with (a key or option fixed since
+/// then applies), else why not.
+fn provider_for(s: &Session, made: &MadeWith) -> std::result::Result<SharedProvider, String> {
+    let p = s.image_provider().ok_or("set up a generative AI provider first (Generative AI Settings)")?;
+    if MadeWith::of(p.as_ref()) == *made {
+        return Ok(Arc::clone(p));
+    }
+    Err(format!("this was made with {} ({}); choose it again in Generative Fill to use it here", made.name, made.model))
 }
 
 /// A fill that hasn't landed.
@@ -143,6 +178,7 @@ struct Fill {
     anchor: Option<LayerId>,
     status: Arc<FillStatus>,
     input: Arc<FillInput>,
+    made: MadeWith,
 }
 
 /// What a fill's job reports back while it runs.
@@ -788,6 +824,7 @@ pub(crate) struct Source {
     area: Rect,
     request: EditRequest,
     reference: Reference,
+    made: MadeWith,
 }
 
 /// `p[key]`, 1 to [`MAX_VARIATIONS`]; absent, the provider's own default.
@@ -1048,18 +1085,20 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
         count,
         select: !s.spawning(),
     };
+    let made = MadeWith::of(provider.as_ref());
     let g = &mut s.genai_state;
     g.next_fill += 1;
     let id = g.next_fill;
-    g.fills.push(Fill { id, job: None, doc: doc_id, anchor, status: Arc::default(), input: Arc::new(input) });
+    g.fills.push(Fill { id, job: None, doc: doc_id, anchor, status: Arc::default(), input: Arc::new(input), made });
     start(s, id)
 }
 
 /// Run fill `id`'s job: in the background (it stays listed until it lands), or inline.
 fn start(s: &mut Session, id: u64) -> Result<Value> {
-    let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider"))?;
     let fill = s.genai_state.fills.iter().find(|f| f.id == id).ok_or_else(|| bad(format!("no Generative Fill {id} is waiting")))?;
-    let (doc, input, status, turns) = (fill.doc, Arc::clone(&fill.input), Arc::clone(&fill.status), Arc::clone(&s.genai_state.turns));
+    let (doc, input, status) = (fill.doc, Arc::clone(&fill.input), Arc::clone(&fill.status));
+    let provider = provider_for(s, &fill.made).map_err(bad)?;
+    let turns = s.genai_state.turns(provider.as_ref());
     status.set_error(None);
     let spawning = s.spawning();
     let worker = Arc::clone(&status);
@@ -1119,7 +1158,7 @@ fn fill_work(ctx: &JobCtx, input: &FillInput, provider: &dyn ImageProvider, turn
     let results = request_all(ctx, provider, &request, input.count, Some(status))?;
     ctx.progress(0.9, "Placing the results");
     let placed = place_all(&request, &results, input.area, &reference)?;
-    Ok((placed, Source { prompt: request.prompt.clone(), area: input.area, request, reference }))
+    Ok((placed, Source { prompt: request.prompt.clone(), area: input.area, request, reference, made: MadeWith::of(provider) }))
 }
 
 /// Fill `id`'s results arrive (on its document): a new group masked by the selection, one layer
@@ -1281,11 +1320,11 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
     let bad = |msg: String| EngineError::BadParams { cmd: MORE.into(), msg };
     more_enabled(s).map_err(bad)?;
     let group = generative_target(s, p).ok_or_else(|| bad("select a generative layer first".into()))?;
-    let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider".into()))?;
-    let count = variations_param(p, "count", provider.as_ref()).map_err(|_| bad(format!("`count` must be a whole number from 1 to {MAX_VARIATIONS}")))?;
     let source = s.genai_state.sources.get(&group).cloned().ok_or_else(|| bad("select a generative layer first".into()))?;
+    let provider = provider_for(s, &source.made).map_err(bad)?;
+    let count = variations_param(p, "count", provider.as_ref()).map_err(|_| bad(format!("`count` must be a whole number from 1 to {MAX_VARIATIONS}")))?;
     let doc = s.active().map(|st| st.doc.id).ok_or(EngineError::NoDocument)?;
-    let turns = Arc::clone(&s.genai_state.turns);
+    let turns = s.genai_state.turns(provider.as_ref());
     // Like a fill, it doesn't lock the document: its variations join the group when they come.
     crate::jobs::run_on(
         s,
