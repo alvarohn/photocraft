@@ -4242,3 +4242,16 @@ navigator	Zoom	Zoom
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Rellenar por separado cada una de las {n} áreas|Rellenar por separado cada una de las {n} áreas
 # Generative Fill: choose how many variations
 	How many versions to generate. Each one is a request of its own.	Cuántas versiones generar. Cada una es una solicitud aparte.
+# Generative Fill: OpenAI (GPT Image)
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Unos US${cost} por variación a {w}×{h} (precios publicados por OpenAI; las imágenes enviadas también se facturan).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Unos US${cost} en total ({n} × US${each}, precios publicados por el proveedor).
+	Default (low)	Predeterminada (baja)
+	Get an OpenAI API key	Obtener una clave de API de OpenAI
+	Input fidelity	Fidelidad de entrada
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI no publica un precio para esta calidad; consulta su página de precios.
+	Paste your OpenAI API key	Pega tu clave de API de OpenAI
+	Quality (compression)	Calidad (compresión)
+	Very high	Muy alta
+	Working resolution	Resolución de trabajo
+	4K (experimental)	4K (experimental)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	No se envía nada hasta que ejecutas el relleno generativo. Cada vez que lo haces, PhotoCraft envía a OpenAI (api.openai.com) el área seleccionada y la imagen que la rodea, una máscara de la selección y tu descripción, junto con tu clave de API. Se aplican los términos y la política de privacidad de la API de OpenAI, y el uso se factura a tu clave.

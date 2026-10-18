@@ -23,6 +23,12 @@
 //! for the shell's progress. `area` fills one of the selection's separate areas (`areas`), so
 //! several objects selected together are generated side by side.
 //!
+//! Providers differ in what they take, and the engine adapts: the size of the image sent
+//! ([`ImageProvider::request_size`], a local model works at 512 px), the mask's form
+//! ([`MaskFormat`]), how many requests go at once ([`ImageProvider::max_parallel`]: a local server
+//! takes one at a time, so its variations and fills queue), and progress while a request runs
+//! ([`ImageProvider::edit_with_progress`], a local model's sampling steps).
+//!
 //! Pixel interchange follows #730's approach (composite through the document's profile to sRGB,
 //! and back into the document's mode and depth on the way in).
 
@@ -33,7 +39,7 @@ use photocraft_cms::{Builtin, Intent, Transform};
 use photocraft_codecs::{self as codecs, ChannelLayout, Format, Image, SampleType as CodecSample};
 use photocraft_color::{ColorMode, PixelFormat, SampleType};
 use photocraft_doc::{DocId, Document, Layer, LayerId, LayerMask};
-use photocraft_genai::{EditMode, EditRequest, ImageProvider, ImageSize, ReferenceImage};
+use photocraft_genai::{EditMode, EditRequest, GenError, ImageProvider, ImageSize, MaskFormat, ReferenceImage};
 use photocraft_geom::Rect;
 use photocraft_raster::Surface;
 use serde::Serialize;
@@ -138,9 +144,19 @@ struct FillStatus {
     queued: AtomicUsize,
     /// Why it failed, when it did (it waits for Retry or Discard then).
     error: Mutex<Option<String>>,
+    /// How far its requests are (0..1), from a provider that says (a local model).
+    reported: Mutex<Option<f32>>,
 }
 
 impl FillStatus {
+    fn reported(&self) -> Option<f32> {
+        *self.reported.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn set_reported(&self, fraction: Option<f32>) {
+        *self.reported.lock().unwrap_or_else(PoisonError::into_inner) = fraction;
+    }
+
     fn error(&self) -> Option<String> {
         self.error.lock().unwrap_or_else(PoisonError::into_inner).clone()
     }
@@ -190,6 +206,8 @@ pub struct FillInfo {
     /// Place in line when queued (1 = next).
     pub queue_position: usize,
     pub progress: f32,
+    /// How far its requests are (0..1), when the provider says (a local model's sampling steps).
+    pub provider_progress: Option<f32>,
     pub elapsed_ms: f64,
     pub error: Option<String>,
 }
@@ -224,6 +242,7 @@ impl Fill {
             state,
             queue_position: if error.is_some() { 0 } else { queued },
             progress: job.as_ref().map_or(0.0, |j| j.progress),
+            provider_progress: if state == "running" { self.status.reported() } else { None },
             elapsed_ms: job.as_ref().map_or(0.0, |j| j.elapsed_ms),
             error,
         })
@@ -278,6 +297,16 @@ pub(crate) fn context_area(selected: Rect, canvas: Rect, aspect: impl Fn(u32, u3
     let (x0, x1) = grow(r.x0, r.x1, want_w, canvas.x0, canvas.x1);
     let (y0, y1) = grow(r.y0, r.y1, want_h, canvas.y0, canvas.y1);
     Rect::new(x0, y0, x1, y1)
+}
+
+/// The area a fill of the active selection sends (its bounds and the context around them), for
+/// the shell's cost estimate.
+pub fn fill_area(s: &Session) -> Option<Rect> {
+    let provider = s.image_provider()?;
+    let st = s.active()?;
+    let canvas = st.doc.bounds();
+    let selected = st.doc.selection.as_ref()?.content_bounds().intersect(&canvas);
+    (!selected.is_empty()).then(|| context_area(selected, canvas, |w, h| provider.edit_aspect(w, h)))
 }
 
 /// The visible image over `area`, in 8-bit sRGB.
@@ -764,23 +793,103 @@ fn variations_param(p: &Value, key: &str, provider: &dyn ImageProvider) -> Resul
     }
 }
 
+/// What a provider reports while a request runs (a local model's sampling steps), into the job's
+/// share `lo..hi` of its progress and, for a fill, its own figure.
+struct Report<'a> {
+    ctx: &'a JobCtx,
+    lo: f32,
+    hi: f32,
+    /// Before the provider's message: which variation, when there are several.
+    prefix: String,
+    status: Option<&'a FillStatus>,
+    /// This request's place among the fill's `count`.
+    index: usize,
+    count: usize,
+}
+
+impl photocraft_genai::Progress for Report<'_> {
+    fn report(&self, fraction: f32, message: &str) {
+        let f = if fraction.is_finite() { fraction.clamp(0.0, 1.0) } else { 0.0 };
+        self.ctx.progress(self.lo + f * (self.hi - self.lo), &format!("{}{message}", self.prefix));
+        if let Some(status) = self.status {
+            status.set_reported(Some((self.index as f32 + f) / self.count.max(1) as f32));
+        }
+    }
+    fn cancelled(&self) -> bool {
+        self.ctx.cancelled()
+    }
+}
+
+/// The request in the form `provider` takes it: its mask as it wants it ([`MaskFormat`]). The
+/// request kept for Generate More and Retry stays black and white, so it suits any provider.
+fn for_provider<'a>(request: &'a EditRequest, provider: &dyn ImageProvider) -> Result<std::borrow::Cow<'a, EditRequest>> {
+    match provider.mask_format() {
+        MaskFormat::Luma => Ok(std::borrow::Cow::Borrowed(request)),
+        MaskFormat::Alpha => {
+            let mask = codecs::decode(&request.mask).map_err(other)?.convert(ChannelLayout::Rgba, CodecSample::U8);
+            // Transparent wherever any of the selection is: the result is masked by the
+            // selection's own soft edge afterwards, so the provider must paint all of it.
+            let px: Vec<u8> = mask.data().as_chunks::<4>().0.iter().flat_map(|p| [0, 0, 0, if p[0] > 8 { 0 } else { 255 }]).collect();
+            let png = encode_rgba(px, mask.width(), mask.height())?;
+            Ok(std::borrow::Cow::Owned(EditRequest { mask: png, ..request.clone() }))
+        }
+    }
+}
+
 /// Ask for `count` results of one request. The calls run side by side (each is a slow network
-/// round trip); any that fail are dropped as long as one succeeds.
-fn request_all(ctx: &crate::jobs::JobCtx, provider: &dyn ImageProvider, request: &EditRequest, count: usize) -> Result<Vec<Vec<u8>>> {
+/// round trip), or one after another for a provider that takes one at a time (a local server);
+/// any that fail are dropped as long as one succeeds.
+fn request_all(
+    ctx: &crate::jobs::JobCtx,
+    provider: &dyn ImageProvider,
+    request: &EditRequest,
+    count: usize,
+    status: Option<&FillStatus>,
+) -> Result<Vec<Vec<u8>>> {
     let name = provider.info().name;
     let msg = if count == 1 { format!("Waiting for {name}") } else { format!("Waiting for {name} ({count} variations)") };
     ctx.progress(0.15, &msg);
+    let request = &*for_provider(request, provider)?;
+    let report = |index: usize| Report {
+        ctx,
+        lo: 0.15 + 0.75 * index as f32 / count.max(1) as f32,
+        hi: 0.15 + 0.75 * (index + 1) as f32 / count.max(1) as f32,
+        prefix: if count > 1 { format!("Variation {} of {count}: ", index + 1) } else { String::new() },
+        status,
+        index,
+        count,
+    };
+    let one_at_a_time = count == 1 || provider.max_parallel() == Some(1) || cfg!(target_arch = "wasm32");
     #[cfg(not(target_arch = "wasm32"))]
-    let results: Vec<_> = if count == 1 {
-        vec![queue::edit(ctx, provider, request)]
+    let results: Vec<_> = if one_at_a_time {
+        let mut results = Vec::new();
+        for i in 0..count {
+            ctx.check()?;
+            let r = queue::edit(ctx, provider, request, &report(i));
+            // The rest would fail the same way.
+            let stop = matches!(r, Err(GenError::Auth | GenError::Account(_) | GenError::Network(_) | GenError::Cancelled));
+            results.push(r);
+            if stop {
+                break;
+            }
+        }
+        results
     } else {
         std::thread::scope(|scope| {
-            let calls: Vec<_> = (0..count).map(|_| scope.spawn(|| queue::edit(ctx, provider, request))).collect();
-            calls.into_iter().map(|c| c.join().unwrap_or(Err(photocraft_genai::GenError::BadResponse("the request failed")))).collect()
+            let calls: Vec<_> = (0..count)
+                .map(|i| {
+                    let report = report(i);
+                    scope.spawn(move || queue::edit(ctx, provider, request, &report))
+                })
+                .collect();
+            calls.into_iter().map(|c| c.join().unwrap_or(Err(GenError::BadResponse("the request failed")))).collect()
         })
     };
     #[cfg(target_arch = "wasm32")]
-    let results: Vec<_> = (0..count).map(|_| queue::edit(ctx, provider, request)).collect();
+    let results: Vec<_> = {
+        let _ = one_at_a_time;
+        (0..count).map(|i| queue::edit(ctx, provider, request, &report(i))).collect()
+    };
     ctx.check()?;
     let mut first_error = None;
     let mut images = Vec::new();
@@ -887,7 +996,7 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
     if mode == EditMode::Edit && !caps.edit_in_place {
         return Err(bad(format!("{provider_name} can't edit what is in the selection; use Fill")));
     }
-    let references = references_param(s, p, caps.max_references.min(photocraft_genai::MAX_REFERENCES), provider_name)?;
+    let references = references_param(s, p, caps.max_references.min(photocraft_genai::REFERENCES_LIMIT), provider_name)?;
     let st = s.active().ok_or(EngineError::NoDocument)?;
     let doc = st.doc.clone();
     let mut sel = doc.selection.clone().ok_or_else(|| bad("no selection"))?;
@@ -900,6 +1009,9 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
     let area = context_area(sel.content_bounds().intersect(&canvas), canvas, |w, h| provider.edit_aspect(w, h));
     let k = (f64::from(UPLOAD_SIDE) / f64::from(area.width().max(area.height()))).min(1.0);
     let (w, h) = (((f64::from(area.width()) * k).round() as u32).max(1), ((f64::from(area.height()) * k).round() as u32).max(1));
+    // The provider's working size (a local model's is small); never larger than what is sent.
+    let (w, h) = provider.request_size(w, h);
+    let (w, h) = (w.clamp(1, UPLOAD_SIDE), h.clamp(1, UPLOAD_SIDE));
     let (doc_id, anchor) = (doc.id, st.active_layer);
     let input = FillInput {
         name: layer_name(&prompt),
@@ -981,8 +1093,9 @@ fn fill_work(ctx: &JobCtx, input: &FillInput, provider: &dyn ImageProvider, turn
     let references = input.references.iter().map(ReferenceSource::image).collect::<Result<Vec<_>>>()?;
     ctx.check()?;
     let request = EditRequest { image, mask, prompt: input.prompt.clone(), size: ImageSize::for_long_side(w.max(h)), mode: input.mode, references };
-    let _turn = turns.take(ctx, &status.queued)?;
-    let results = request_all(ctx, provider, &request, input.count)?;
+    let _turn = turns.take(ctx, &status.queued, provider.max_parallel())?;
+    status.set_reported(None);
+    let results = request_all(ctx, provider, &request, input.count, Some(status))?;
     ctx.progress(0.9, "Placing the results");
     let placed = place_all(&request, &results, input.area, &reference)?;
     Ok((placed, Source { prompt: request.prompt.clone(), area: input.area, request, reference }))
@@ -1158,8 +1271,8 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
         LABEL,
         doc,
         move |ctx| {
-            let _turn = turns.take(ctx, &AtomicUsize::new(0))?;
-            let results = request_all(ctx, provider.as_ref(), &source.request, count)?;
+            let _turn = turns.take(ctx, &AtomicUsize::new(0), provider.max_parallel())?;
+            let results = request_all(ctx, provider.as_ref(), &source.request, count, None)?;
             ctx.progress(0.9, "Placing the results");
             place_all(&source.request, &results, source.area, &source.reference)
         },
@@ -1188,7 +1301,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generative Fill…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":str?,"variations":1..4?,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing (`variations` defaults to the provider's: 3 for a cloud service, 1 for a local model). `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most 4) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to the provider at a time (the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
+            params: r#"{"prompt":str?,"variations":1..4?,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing (`variations` defaults to the provider's: 3 for a cloud service, 1 for a local model). `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most the provider's: 4 for Gemini and local models, 15 for OpenAI) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to the provider at a time (one for a local server; the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
             enabled: fill_enabled,
             run: fill,
             journal: true,

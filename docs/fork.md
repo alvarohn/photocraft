@@ -33,6 +33,15 @@ repository doesn't have, so merging it stays easy.
   official files in small places: `jobs.rs` (`run_on`, a job that doesn't lock its document),
   and one-line hooks in `canvas.rs`, `panels.rs` (Layers rows, status bar) and `jobs_ui.rs`.
   Details: [generative-ai.md](generative-ai.md).
+- **More providers and a choice of variations**, also the fork's own (2026-10-18): the prompt
+  dialog asks for 1 to 4 variations (remembered per provider), and besides Gemini, Generative AI
+  Settings offers **OpenAI** (GPT Image 2.5 Sunburst and Flare, 2, 1.5, 1, 1 Mini; quality,
+  working resolution up to 4K, output format, input fidelity, a cost estimate; up to 15 reference
+  images). New files: `crates/genai/src/openai.rs`, `crates/ui-egui/src/genai_ui/providers.rs`;
+  small changes in texjer's files (`lib.rs` of `genai`, `genai_cmds.rs`, `queue.rs`,
+  `genai_ui.rs`, `apps/photocraft/src/genai.rs`) and one line in the official
+  `crates/ui-egui/src/lib.rs` (`BuildProviderFn` takes the provider's options and an optional
+  key). Details: [generative-ai.md](generative-ai.md).
 - **Automatic builds** (`.github/workflows/fork-release.yml`): every 6 hours GitHub Actions merges
   the official `main` into this fork's code (`scripts/fork/merge-upstream.sh`), and when the result
   changed since the last release it tests Generative Fill, builds the Windows installer and

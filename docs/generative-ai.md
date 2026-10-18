@@ -8,8 +8,9 @@ the maintainers asked for in issue #41.
 ## Using it
 
 1. Edit › Preferences › AI Integrations… › Generative AI Settings… (or the ▾ next to the selection
-   tools' Generative Fill… button). Pick a provider and model, paste an API key, and read what is
-   sent before pressing OK.
+   tools' Generative Fill… button). Pick a provider (Google Gemini or OpenAI) and model, paste an
+   API key, set the provider's options, and read what is sent before pressing OK. Each provider
+   keeps its own model, options and key, so switching back and forth loses nothing.
 2. Make a selection, then Edit › Generative Fill… (or the options bar button). The dialog has two
    modes, as tabs:
    - **Fill selection** (the default): describe what to put there, or leave the prompt empty to
@@ -20,14 +21,18 @@ the maintainers asked for in issue #41.
      Generative Fill). It needs a prompt: with none, the fill runs as Fill. The tab chosen is
      remembered.
 
-   Under the prompt, **Reference images** (optional, up to 4): Add Reference… › Image File… or
+   Under the prompt, **Reference images** (optional, up to 4; 15 with OpenAI): Add Reference… › Image File… or
    one of the open documents. They show the provider an object or product to put in the
    selection, or a design, colour or look to match ("this bottle", "a label like this one"). With
    references and an empty prompt, Fill places what they show. A file is checked when it is added
    (one that doesn't open is reported then) and read again when the fill runs. The references of
    the last fill are offered again the next time, for this session only.
-3. Three variations come back, as in Photoshop. They land in a new group named after the prompt
-   and masked by the selection, one layer per variation (Variation 1, 2, 3), with the first
+   **Variations** (1 to 4): how many versions to generate, one request each. The default is the
+   provider's (3, as Photoshop makes); the number chosen is remembered for each provider, so a
+   costly or slow one can stay at 1. With a provider that publishes per-image prices (OpenAI) the
+   dialog shows about what the fill will cost.
+3. The variations come back as in Photoshop. They land in a new group named after the prompt
+   and masked by the selection, one layer per variation (Variation 1, 2, 3…), with the first
    showing. Nothing under it changes; one undo removes it. The requests run side by side as one
    background job that can be cancelled; if some fail and others succeed, the successes are kept.
 
@@ -41,8 +46,8 @@ the maintainers asked for in issue #41.
    - in the status bar, how many are generating, waiting and failed; click it for the list (go
      to an area, retry, cancel).
 
-   At most 5 fills talk to the provider at once (each sends 3 requests, and the service limits
-   how many it takes a minute); the rest wait their turn in order. A request the service turns
+   At most 5 fills talk to the provider at once (each sends one request per variation, and the
+   service limits how many it takes a minute); the rest wait their turn in order. A request the service turns
    down for its rate limit is sent again after 4, 8 and 16 s. The result lands where it was
    started, on its own document, without becoming the active layer, so whatever the user is
    doing meanwhile goes on; it is one undo step of its own, and a later one lands right above the
@@ -57,20 +62,46 @@ the maintainers asked for in issue #41.
 4. With the group (or one of its variations) active, Properties › Variations shows a thumbnail
    per variation: click one to show it alone (`layer.generative.selectVariation`, one undo step).
    Generate More sends the same image, mask, prompt, mode and reference images again and adds
-   three more (`layer.generative.more`).
+   as many more as the last fill made with that provider (`layer.generative.more`).
 
 Photoshop keeps its variations inside one generative layer. PhotoCraft uses a group of ordinary
 layers instead, so a PSD round trip needs no format changes and other apps see plain layers. What
 each group was generated from is kept in the session only: after reopening a file the group is an
 ordinary group (the variations are all still there; show one by hand), and Generate More is off.
 
-Providers today: **Google Gemini** (the Nano Banana image models, default
-`gemini-nano-banana-2.1`). Keys come from [Google AI Studio](https://aistudio.google.com/apikey).
+Providers today:
+
+- **Google Gemini** (the Nano Banana image models, default `gemini-nano-banana-2.1`). Keys come
+  from [Google AI Studio](https://aistudio.google.com/apikey).
+- **OpenAI** (GPT Image, through the Images API's `/v1/images/edits`). Keys come from
+  [platform.openai.com](https://platform.openai.com/api-keys). Models, checked against the API
+  reference (`openai/openai-openapi`, October 2026): `gpt-image-2.5-sunburst` (the default: GPT
+  Image 2.5 for the most faithful edits), `gpt-image-2.5-flare` (GPT Image 2.5, faster),
+  `gpt-image-2`, `gpt-image-1.5`, `gpt-image-1`, `gpt-image-1-mini`. There is no bare
+  `gpt-image-2.5`: Sunburst and Flare are its two models. Options (Generative AI Settings):
+  - *Quality*: auto, low, medium, high (the default); GPT Image 2.5 adds very high (`xhigh`) and
+    maximum (`max`). A quality the model doesn't take becomes high.
+  - *Working resolution* (GPT Image 2 and 2.5, which take any size): 1K, 2K (default) or 4K, the
+    long side of the result (sides multiples of 16, between 1:3 and 3:1, 655,360 to 8,294,400
+    pixels; above 2560×1440 OpenAI calls it experimental). GPT Image 1, 1.5 and Mini make
+    1024×1024, 1536×1024 or 1024×1536, whichever is nearest the area's shape.
+  - *Format*: PNG (default), JPEG or WebP, with a compression quality for the last two.
+  - *Input fidelity* (GPT Image 1 and 1.5 only): high or low; the others take only their own.
+  - The settings show about what one variation costs at that quality and size, from OpenAI's
+    published per-image prices (GPT Image 2.5 is billed by tokens at GPT Image 2's rates, so its
+    figure is GPT Image 2's; no figure for auto, very high or maximum). It is an estimate: the
+    images sent are billed too.
+
+  Not offered: *moderation* (the API takes it only in the JSON form of an edit, and PhotoCraft
+  sends the multipart form, the one the official SDKs send), *background* (a fill's result is
+  matted into the photo, so transparency isn't used) and `n` (each variation is its own request,
+  so they run side by side and a failed one doesn't lose the others; the image sent is billed once
+  per variation).
 
 ## What is sent
 
 Only when Generative Fill or Generate More runs, and only to the configured provider, once per
-variation (so three requests by default, each billed to the user's key). In Fill:
+variation (1 to 4, three by default, each billed to the user's key). In Fill:
 
 - the selection's bounds plus a margin of context (twice the selection's longer side, 64 to
   2048 px, so the model can follow a pattern or trend that runs through the selection, not
@@ -82,7 +113,9 @@ variation (so three requests by default, each billed to the user's key). In Fill
   what is being replaced, as Photoshop's fill doesn't, so it can't paint it back: an empty prompt
   removes what was selected and continues the surroundings, including anything that crosses the
   selection's edge. (A flat grey hole was tried first; Gemini drew it in as a grey box or a lamp.);
-- a black-and-white PNG mask of the selection at the same size (white = fill);
+- a PNG mask of the selection at the same size: black and white (white = fill) for Gemini;
+  for OpenAI, which takes a real mask, transparent wherever any of the selection is (OpenAI edits
+  where the mask's alpha is zero) and opaque elsewhere;
 - the prompt.
 
 In Edit, the same, except that the selection is sent as it is (not blurred), since the provider is
@@ -93,10 +126,13 @@ before Edit and references existed (a test pins the instruction text).
 Reference images, in either mode, follow the mask: each one's composite (all visible layers),
 reduced to at most 1024 px on its long side, converted to sRGB, transparent parts matted over
 white, as a JPEG. The instruction says what they are for. Gemini takes up to 14; PhotoCraft sends
-at most 4, as each one adds to every variation's cost and time.
+it at most 4, as each one adds to every variation's cost and time. OpenAI takes 16 images in all
+(`image[]`, the one edited first, the mask applying to it), so PhotoCraft sends it up to 15
+references.
 
 Gemini takes no mask parameter, so the mask is a second image and the instruction says what it
-means. PhotoCraft keeps only the masked pixels of the result, so anything the model changes
+means. OpenAI takes the mask as a parameter; its instruction says only that the masked area is
+the one to edit (and, in Fill, that it was blurred out). PhotoCraft keeps only the masked pixels of the result, so anything the model changes
 outside the selection is discarded. The model redraws the whole image and relights it,
 differently each time (Gemini often lifts dark shadows to nearly double), which would leave a
 seam at the selection's edge; the area outside the selection should come back unchanged, so
@@ -122,14 +158,16 @@ request (`PHOTOCRAFT_LIVE_REPLAY`). Gemini returns JPEG (its only output format)
 - The key field is not a dialog field, so `ui.inspect` and the control channel never see it. An
   `ApiKey` never prints (`Debug` is redacted), errors never carry a response body, and a
   service's own error text is passed on only after any copy of the key is scrubbed from it.
-- The key goes in a request header (`x-goog-api-key`), never in a URL. The transport is HTTPS
-  only and follows no redirects.
+- The key goes in a request header (`x-goog-api-key` for Gemini, `Authorization: Bearer` for
+  OpenAI), never in a URL or a body. The transport is HTTPS only and follows no redirects. TLS
+  is always verified (rustls): a request whose certificate doesn't check out fails, and is never
+  sent again without verification.
 
 ## Automation
 
 `edit.generativeFill` is a normal engine command (one undo step, a cancellable job; params
-`prompt`, `variations` (1 to 4, default 3), `mode` (`"fill"`, the default, or `"edit"`, which
-needs a prompt), `references` (up to 4 file paths, `{"path": …}` or `{"document": id}` of an
+`prompt`, `variations` (1 to 4; by default the provider's, 3 for the cloud services), `mode` (`"fill"`, the default, or `"edit"`, which
+needs a prompt), `references` (up to 4 file paths, 15 with OpenAI, `{"path": …}` or `{"document": id}` of an
 open document) and `area` (fill only that one of the selection's separate areas, numbered from
 0 top to bottom, as `layer.generative.areas` lists them)) so scripts and recorded actions can run
 it locally, but automation (the control channel and MCP) may not: `authorize_engine_command`
@@ -149,18 +187,20 @@ before.
 
 | Where | What |
 |---|---|
-| `crates/genai` | `ImageProvider` (generate, edit with mask in Fill or Edit mode with reference images, variations; capabilities, including `edit_in_place` and `max_references`; output shape), `HttpTransport` (the network seam), `ApiKey`, and the Gemini backend. No network code: it builds for wasm and its tests use a fake transport. |
+| `crates/genai` | `ImageProvider` (generate, edit with mask in Fill or Edit mode with reference images, variations; capabilities, including `edit_in_place` and `max_references`; output shape, working size, mask form, how many requests at once, default number of variations, cost estimate, progress), `HttpTransport` (the network seam: POST, and GET for polling), `ApiKey`, `Multipart`, and the backends: `gemini.rs`, `openai.rs`. No network code: it builds for wasm and its tests use a fake transport. |
 | `crates/engine/src/genai_cmds.rs` | `edit.generativeFill`, `layer.generative.selectVariation`, `layer.generative.more`, `.retry`, `.discard`, `.fills`, `.areas`: context area, pixel interchange (after #730's approach), reference images (`reference_image`), the job, the masked group of variations, the fills that haven't landed (`GenState`). `Session::set_image_provider` installs a provider. |
 | `crates/engine/src/genai_cmds/queue.rs` | Turns at the provider (at most 5 fills at once, in order) and the pauses after a rate-limit answer. |
 | `crates/engine/src/genai_cmds/areas.rs` | A selection's separate areas (8-connected parts, on a grid of at most a million cells) and the mask of one of them. |
 | `crates/engine/src/jobs.rs` (`run_on`) | A job that edits a document without locking it: the fills' jobs. |
-| `crates/ui-egui/src/genai_ui.rs` | Generative AI Settings, the prompt dialog (Fill / Edit tabs, reference images, each area on its own), the options bar button, Properties › Variations, `restore` at launch. |
+| `crates/ui-egui/src/genai_ui.rs` | Generative AI Settings, the prompt dialog (Fill / Edit tabs, reference images, each area on its own, variations, cost), the options bar button, Properties › Variations, `restore` at launch. |
+| `crates/ui-egui/src/genai_ui/providers.rs` | The providers the settings offer and each one's rows (model, key, options), notes and what is sent; preferences `{"provider", "model", "options": {<provider>: {…}}}`. |
 | `crates/ui-egui/src/genai_ui/pending.rs` | Fills in progress: the canvas shimmer, outline and tags, the Layers panel's "Generating…" rows, the status bar's readout and list, the flash when one lands. |
-| `apps/photocraft/src/genai.rs` | The desktop `GenAiServices`: credential store (`keyring`) and HTTPS transport (`ureq` + rustls). |
+| `apps/photocraft/src/genai.rs` | The desktop `GenAiServices`: credential store (`keyring`), HTTPS transport (`ureq` + rustls; 3 minutes for Gemini, 10 for OpenAI) and `build`, which makes a provider from its id, model, options and key. |
 
 ### Adding a provider
 
 Implement `ImageProvider` in `crates/genai` over an `HttpTransport` (any local endpoint, ComfyUI,
-OpenAI, a generic HTTP contract), add it to `build` in `apps/photocraft/src/genai.rs` and to
-`providers()` in `genai_ui.rs`, and test it against a fake transport the way `gemini.rs` does.
+a generic HTTP contract), add it to `build` in `apps/photocraft/src/genai.rs` and to
+`genai_ui/providers.rs` (the list, its rows and notes), and test it against a fake transport the
+way `gemini.rs` and `openai.rs` do.
 No backend is privileged; the engine only sees the trait.

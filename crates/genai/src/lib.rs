@@ -15,6 +15,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 pub mod gemini;
+pub mod openai;
 
 /// Largest response body a provider accepts (a 4K PNG is well under this).
 pub const MAX_RESPONSE: usize = 48 * 1024 * 1024;
@@ -31,6 +32,10 @@ pub enum GenError {
     Auth,
     #[error("the image service's quota or rate limit was reached; try again later")]
     Quota,
+    /// The account can't make this request until its owner acts (credit used up, a spending limit,
+    /// no access to the model); trying again doesn't help.
+    #[error("the image service account can't make this request: {0}")]
+    Account(String),
     #[error("the image service declined this request: {0}")]
     Refused(String),
     #[error("the image service failed (HTTP {status}): {message}")]
@@ -64,6 +69,62 @@ impl ApiKey {
     }
 }
 
+/// A `multipart/form-data` body (RFC 7578), for services that take files as form parts.
+pub struct Multipart {
+    boundary: String,
+    body: Vec<u8>,
+}
+
+impl Multipart {
+    /// `seed` makes the boundary; any value works, as the boundary is checked against the parts.
+    pub fn new(seed: u64) -> Multipart {
+        Multipart { boundary: format!("----PhotoCraftBoundary{seed:016x}"), body: Vec::new() }
+    }
+
+    fn head(&mut self, name: &str, file: Option<(&str, &str)>) {
+        // Names and file names are ours (ASCII, no quotes), never user text.
+        let disposition = match file {
+            Some((filename, _)) => format!("form-data; name=\"{name}\"; filename=\"{filename}\""),
+            None => format!("form-data; name=\"{name}\""),
+        };
+        self.body.extend_from_slice(format!("--{}\r\nContent-Disposition: {disposition}\r\n", self.boundary).as_bytes());
+        if let Some((_, mime)) = file {
+            self.body.extend_from_slice(format!("Content-Type: {mime}\r\n").as_bytes());
+        }
+        self.body.extend_from_slice(b"\r\n");
+    }
+
+    pub fn text(&mut self, name: &str, value: &str) -> &mut Multipart {
+        self.head(name, None);
+        self.body.extend_from_slice(value.as_bytes());
+        self.body.extend_from_slice(b"\r\n");
+        self
+    }
+
+    pub fn file(&mut self, name: &str, filename: &str, mime: &str, bytes: &[u8]) -> &mut Multipart {
+        self.head(name, Some((filename, mime)));
+        self.body.extend_from_slice(bytes);
+        self.body.extend_from_slice(b"\r\n");
+        self
+    }
+
+    /// The `content-type` header value and the body. `Err` in the (astronomically unlikely) case
+    /// that a part contains the boundary.
+    pub fn finish(mut self) -> Result<(String, Vec<u8>)> {
+        let marker = format!("--{}", self.boundary);
+        if self.body.windows(marker.len()).filter(|w| *w == marker.as_bytes()).count() != self.parts() {
+            return Err(GenError::Invalid("could not encode the request".into()));
+        }
+        self.body.extend_from_slice(format!("--{}--\r\n", self.boundary).as_bytes());
+        Ok((format!("multipart/form-data; boundary={}", self.boundary), self.body))
+    }
+
+    fn parts(&self) -> usize {
+        let head = format!("--{}\r\nContent-Disposition", self.boundary);
+        self.body.windows(head.len()).filter(|w| *w == head.as_bytes()).count()
+    }
+}
+
 impl std::fmt::Debug for ApiKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("ApiKey(…)")
@@ -89,6 +150,39 @@ pub struct HttpResponse {
 pub trait HttpTransport: Send + Sync {
     /// Blocking: called from an engine background job, never the UI thread.
     fn post(&self, request: HttpRequest) -> Result<HttpResponse>;
+    /// A GET (`request.body` is ignored), for providers that poll a job; few need it.
+    fn get(&self, _request: HttpRequest) -> Result<HttpResponse> {
+        Err(GenError::Unsupported("this connection"))
+    }
+}
+
+/// What a long request reports while it runs, and how it learns that it should stop. The engine
+/// passes its job's; a provider that waits minutes (a local model) uses it, others ignore it.
+pub trait Progress: Send + Sync {
+    /// How far this request is (0..1), with a short message ("Step 3 of 8").
+    fn report(&self, fraction: f32, message: &str);
+    fn cancelled(&self) -> bool;
+}
+
+/// A [`Progress`] that reports nowhere and is never cancelled.
+pub struct NoProgress;
+
+impl Progress for NoProgress {
+    fn report(&self, _: f32, _: &str) {}
+    fn cancelled(&self) -> bool {
+        false
+    }
+}
+
+/// How a provider wants the mask of an [`EditRequest`]. The engine builds it, so a provider never
+/// decodes an image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MaskFormat {
+    /// Opaque black and white: white marks the pixels to change (Gemini, stable-diffusion.cpp).
+    #[default]
+    Luma,
+    /// Transparent where the pixels are to change, opaque black elsewhere (OpenAI).
+    Alpha,
 }
 
 /// What a provider can do; the UI and the engine's `enabled` checks read it.
@@ -151,6 +245,9 @@ pub struct GenerateRequest {
 /// Most reference images one edit sends. Gemini takes up to 14, but each one adds to the cost and
 /// the time of every variation, and a few cover what people use them for.
 pub const MAX_REFERENCES: usize = 4;
+/// Most reference images any provider is given ([`Capabilities::max_references`] says how many
+/// each takes): OpenAI takes 16 images, the one edited and 15 more.
+pub const REFERENCES_LIMIT: usize = 15;
 
 /// What an edit does with the masked area.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -218,6 +315,31 @@ pub trait ImageProvider: Send + Sync {
     /// service that answers in seconds. A provider that takes minutes an image says fewer.
     fn default_variations(&self) -> usize {
         3
+    }
+    /// The pixel size an edit's image is sent at, from the size the engine would send (the
+    /// context area, at most 2048 px on its long side). A provider that works at a smaller size or
+    /// needs multiples of some step says so; the engine scales the result back up.
+    fn request_size(&self, w: u32, h: u32) -> (u32, u32) {
+        (w, h)
+    }
+    /// How the mask is to be sent ([`EditRequest::mask`]).
+    fn mask_format(&self) -> MaskFormat {
+        MaskFormat::Luma
+    }
+    /// Most requests sent to it at once (a local server works one at a time); `None`: as many as
+    /// the engine allows.
+    fn max_parallel(&self) -> Option<usize> {
+        None
+    }
+    /// About what one variation of an edit of a `w`×`h` area costs, in US dollars, when the
+    /// provider bills per image and publishes its prices; `None` otherwise (free, or unknown).
+    fn estimated_cost(&self, _w: u32, _h: u32) -> Option<f64> {
+        None
+    }
+    /// [`ImageProvider::edit`], reporting progress and stopping when cancelled, for providers that
+    /// can (others just edit).
+    fn edit_with_progress(&self, request: &EditRequest, _progress: &dyn Progress) -> Result<GeneratedImage> {
+        self.edit(request)
     }
     fn generate(&self, _request: &GenerateRequest) -> Result<GeneratedImage> {
         Err(GenError::Unsupported(self.info().name))

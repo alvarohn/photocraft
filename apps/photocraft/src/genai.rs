@@ -1,19 +1,24 @@
 //! Generative AI services for the desktop app (#41): API keys in the OS credential store and an
 //! HTTPS transport for `photocraft-genai` providers. Nothing here runs until the user sets up a
-//! provider in Generative AI Settings.
+//! provider in Generative AI Settings. TLS is always verified (rustls with the bundled roots):
+//! a certificate that doesn't check out fails the request, which is never sent again some other
+//! way.
 
 use std::io::Read as _;
 use std::sync::Arc;
 use std::time::Duration;
 
-use photocraft_genai::{ApiKey, GenError, HttpRequest, HttpResponse, HttpTransport};
+use photocraft_genai::{ApiKey, GenError, HttpRequest, HttpResponse, HttpTransport, gemini, openai};
 use photocraft_ui_egui::GenAiServices;
+use serde_json::Value;
 
 /// The credential store's service name; the account is the provider id (`gemini`).
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 const SERVICE: &str = "ai.storyteller.photocraft.genai";
 /// An image request can take a while (large outputs, busy service).
 const TIMEOUT: Duration = Duration::from_secs(180);
+/// OpenAI's highest qualities at 4K take minutes.
+const OPENAI_TIMEOUT: Duration = Duration::from_secs(600);
 
 /// Blocking HTTPS for provider requests, run from engine background jobs. HTTPS only, no
 /// redirects (a redirect could carry the key header to another host), bounded response size.
@@ -22,10 +27,24 @@ struct Https {
 }
 
 impl Https {
-    fn new() -> Self {
-        let config = ureq::Agent::config_builder().timeout_global(Some(TIMEOUT)).https_only(true).max_redirects(0).http_status_as_error(false).build();
+    fn new(timeout: Duration) -> Self {
+        let config = ureq::Agent::config_builder().timeout_global(Some(timeout)).https_only(true).max_redirects(0).http_status_as_error(false).build();
         Self { agent: config.new_agent() }
     }
+}
+
+/// The response's status and body, at most [`photocraft_genai::MAX_RESPONSE`] bytes of it.
+fn read(response: ureq::http::Response<ureq::Body>) -> photocraft_genai::Result<HttpResponse> {
+    let mut response = response;
+    let status = response.status().as_u16();
+    let mut body = Vec::new();
+    response
+        .body_mut()
+        .as_reader()
+        .take(photocraft_genai::MAX_RESPONSE as u64 + 1)
+        .read_to_end(&mut body)
+        .map_err(|e| GenError::Network(format!("reading the response failed: {e}")))?;
+    Ok(HttpResponse { status, body })
 }
 
 impl HttpTransport for Https {
@@ -35,23 +54,27 @@ impl HttpTransport for Https {
             call = call.header(*name, value.as_str());
         }
         // ureq's error text names the host and the failure, never header values.
-        let mut response = call.send(&request.body[..]).map_err(|e| GenError::Network(e.to_string()))?;
-        let status = response.status().as_u16();
-        let mut body = Vec::new();
-        response
-            .body_mut()
-            .as_reader()
-            .take(photocraft_genai::MAX_RESPONSE as u64 + 1)
-            .read_to_end(&mut body)
-            .map_err(|e| GenError::Network(format!("reading the response failed: {e}")))?;
-        Ok(HttpResponse { status, body })
+        read(call.send(&request.body[..]).map_err(|e| GenError::Network(e.to_string()))?)
+    }
+
+    fn get(&self, request: HttpRequest) -> photocraft_genai::Result<HttpResponse> {
+        let mut call = self.agent.get(&request.url);
+        for (name, value) in &request.headers {
+            call = call.header(*name, value.as_str());
+        }
+        read(call.call().map_err(|e| GenError::Network(e.to_string()))?)
     }
 }
 
-fn build(provider: &str, model: &str, key: ApiKey) -> Result<photocraft_engine::genai_cmds::SharedProvider, String> {
+fn build(provider: &str, model: &str, options: &Value, key: Option<ApiKey>) -> Result<photocraft_engine::genai_cmds::SharedProvider, String> {
+    let key = || key.clone().ok_or_else(|| format!("{provider} needs an API key"));
     match provider {
-        photocraft_genai::gemini::ID => {
-            let p = photocraft_genai::gemini::GeminiProvider::new(key, model, Https::new()).map_err(|e| e.to_string())?;
+        gemini::ID => {
+            let p = gemini::GeminiProvider::new(key()?, model, Https::new(TIMEOUT)).map_err(|e| e.to_string())?;
+            Ok(Arc::new(p))
+        }
+        openai::ID => {
+            let p = openai::OpenAiProvider::new(key()?, model, openai::Options::from_json(options), Https::new(OPENAI_TIMEOUT)).map_err(|e| e.to_string())?;
             Ok(Arc::new(p))
         }
         other => Err(format!("unknown generative AI provider `{other}`")),
@@ -125,12 +148,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn builds_gemini_and_rejects_unknown_providers_and_models() {
-        let key = || ApiKey::new("k").unwrap();
-        let p = build("gemini", "", key()).unwrap();
-        assert_eq!(p.info().model, photocraft_genai::gemini::DEFAULT_MODEL);
-        assert!(build("gemini", "../etc", key()).is_err());
-        assert!(build("other", "", key()).is_err());
+    fn builds_providers_and_rejects_unknown_providers_and_models() {
+        let key = || Some(ApiKey::new("k").unwrap());
+        let none = serde_json::json!({});
+        let p = build("gemini", "", &none, key()).unwrap();
+        assert_eq!(p.info().model, gemini::DEFAULT_MODEL);
+        assert!(build("gemini", "../etc", &none, key()).is_err());
+        assert!(build("gemini", "", &none, None).is_err(), "a key is needed");
+        assert!(build("other", "", &none, key()).is_err());
+        let p = build("openai", "gpt-image-1.5", &serde_json::json!({"quality": "low"}), key()).unwrap();
+        assert_eq!((p.info().id, p.info().model.as_str()), (openai::ID, "gpt-image-1.5"));
+        assert!(build("openai", "", &none, None).is_err());
     }
 
     /// Developer harness for tuning Generative Fill against the real service: runs one fill with
@@ -157,8 +185,9 @@ mod tests {
             // Free: answer with results saved from an earlier run, to tune what happens after.
             Some(files) => Arc::new(Replay { results: files.split(',').map(|f| std::fs::read(f.trim()).unwrap()).collect(), next: Default::default() }),
             None => {
-                let key = store::load(photocraft_genai::gemini::ID).unwrap().expect("no Gemini key saved in Generative AI Settings");
-                build("gemini", &var("PHOTOCRAFT_LIVE_MODEL").unwrap_or_default(), ApiKey::new(&key).unwrap()).unwrap()
+                let provider = var("PHOTOCRAFT_LIVE_PROVIDER").unwrap_or_else(|| gemini::ID.into());
+                let key = store::load(&provider).unwrap().map(|k| ApiKey::new(&k).unwrap());
+                build(&provider, &var("PHOTOCRAFT_LIVE_MODEL").unwrap_or_default(), &serde_json::json!({}), key).unwrap()
             }
         };
 
@@ -200,7 +229,7 @@ mod tests {
         }
         fn edit_aspect(&self, w: u32, h: u32) -> (u32, u32) {
             // The aspect Gemini would be asked for, so replays are placed as the real run was.
-            let gemini = photocraft_genai::gemini::GeminiProvider::new(ApiKey::new("k").unwrap(), "", Https::new()).unwrap();
+            let gemini = gemini::GeminiProvider::new(ApiKey::new("k").unwrap(), "", Https::new(TIMEOUT)).unwrap();
             photocraft_genai::ImageProvider::edit_aspect(&gemini, w, h)
         }
         fn edit(&self, _: &photocraft_genai::EditRequest) -> photocraft_genai::Result<photocraft_genai::GeneratedImage> {
@@ -211,7 +240,11 @@ mod tests {
 
     #[test]
     fn the_transport_refuses_plain_http_without_sending() {
-        let r = Https::new().post(HttpRequest { url: "http://example.invalid/".into(), headers: vec![("x-goog-api-key", "secret".into())], body: Vec::new() });
+        let r = Https::new(TIMEOUT).post(HttpRequest {
+            url: "http://example.invalid/".into(),
+            headers: vec![("x-goog-api-key", "secret".into())],
+            body: Vec::new(),
+        });
         let e = r.err().unwrap();
         assert!(matches!(e, GenError::Network(_)), "{e:?}");
         assert!(!e.to_string().contains("secret"));

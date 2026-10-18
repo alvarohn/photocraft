@@ -416,8 +416,10 @@ pub type LoadKeyFn = Box<dyn Fn(&str) -> Result<Option<String>, String>>;
 pub type SaveKeyFn = Box<dyn Fn(&str, &str) -> Result<(), String>>;
 /// Removes the key for a provider id.
 pub type DeleteKeyFn = Box<dyn Fn(&str) -> Result<(), String>>;
-/// Builds a provider (id, model, key) over the app's HTTPS transport.
-pub type BuildProviderFn = Box<dyn Fn(&str, &str, photocraft_genai::ApiKey) -> Result<photocraft_engine::genai_cmds::SharedProvider, String>>;
+/// Builds a provider (id, model, its options from Generative AI Settings, its key if it takes one)
+/// over the app's transport.
+pub type BuildProviderFn =
+    Box<dyn Fn(&str, &str, &serde_json::Value, Option<photocraft_genai::ApiKey>) -> Result<photocraft_engine::genai_cmds::SharedProvider, String>>;
 
 /// Generative AI (#41): the OS credential store and the provider factory. Desktop only; `None`
 /// (the web build, tests) keeps Generative AI unavailable.

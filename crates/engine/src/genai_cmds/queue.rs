@@ -1,12 +1,13 @@
 //! Generative Fill's turns at the provider: at most [`MAX_PARALLEL`] fills (and
-//! Generate More requests) talk to it at once; the others wait in the order they were started.
+//! Generate More requests) talk to it at once, fewer if the provider says so (a local server
+//! takes one); the others wait in the order they were started.
 //! A request the service turns down for its rate limit is sent again after a pause.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex, PoisonError};
 
-use photocraft_genai::{EditRequest, GenError, GeneratedImage, ImageProvider};
+use photocraft_genai::{EditRequest, GenError, GeneratedImage, ImageProvider, Progress};
 
 use crate::jobs::JobCtx;
 use crate::{EngineError, Result};
@@ -71,9 +72,11 @@ impl Turns {
         Turns { max: max.max(1), line: Mutex::default(), changed: Condvar::new() }
     }
 
-    /// Wait for a turn. While waiting, `queued` holds the place in line (1 = next); it is 0
-    /// once the turn comes. `Err(Cancelled)` if the job is cancelled meanwhile.
-    pub(crate) fn take(&self, ctx: &JobCtx, queued: &AtomicUsize) -> Result<Turn<'_>> {
+    /// Wait for a turn: one of at most `limit` (the provider's, if it has one) taken at once.
+    /// While waiting, `queued` holds the place in line (1 = next); it is 0 once the turn comes.
+    /// `Err(Cancelled)` if the job is cancelled meanwhile.
+    pub(crate) fn take(&self, ctx: &JobCtx, queued: &AtomicUsize, limit: Option<usize>) -> Result<Turn<'_>> {
+        let max = limit.map_or(self.max, |l| l.clamp(1, self.max));
         let mut line = self.line.lock().unwrap_or_else(PoisonError::into_inner);
         let ticket = line.next;
         line.next = line.next.wrapping_add(1);
@@ -81,7 +84,7 @@ impl Turns {
         loop {
             let place = line.waiting.iter().position(|t| *t == ticket).unwrap_or(0);
             // The web runs jobs inline, one at a time: nothing else could give a turn back.
-            if place == 0 && (line.busy() < self.max || cfg!(target_arch = "wasm32")) {
+            if place == 0 && (line.busy() < max || cfg!(target_arch = "wasm32")) {
                 line.waiting.pop_front();
                 line.holders.push((ticket, ctx.clone()));
                 queued.store(0, Ordering::Relaxed);
@@ -111,10 +114,10 @@ fn wait<'a>(_: &Condvar, line: std::sync::MutexGuard<'a, Line>) -> std::sync::Mu
     line
 }
 
-/// `provider.edit(request)`, sent again after a pause when the service says it is over its rate
-/// limit. False from `pause` (cancelled) stops early.
-pub(crate) fn edit(ctx: &JobCtx, provider: &dyn ImageProvider, request: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
-    let mut r = provider.edit(request);
+/// `provider.edit(request)`, reporting to `progress`, sent again after a pause when the service
+/// says it is over its rate limit. False from `pause` (cancelled) stops early.
+pub(crate) fn edit(ctx: &JobCtx, provider: &dyn ImageProvider, request: &EditRequest, progress: &dyn Progress) -> photocraft_genai::Result<GeneratedImage> {
+    let mut r = provider.edit_with_progress(request, progress);
     for ms in BUSY_PAUSES_MS {
         if !matches!(r, Err(GenError::Quota)) {
             break;
@@ -123,7 +126,7 @@ pub(crate) fn edit(ctx: &JobCtx, provider: &dyn ImageProvider, request: &EditReq
         if !pause(ctx, ms) {
             return Err(GenError::Cancelled);
         }
-        r = provider.edit(request);
+        r = provider.edit_with_progress(request, progress);
     }
     r
 }
@@ -156,14 +159,14 @@ mod tests {
         let turns = Arc::new(Turns::new(2));
         let ctx = JobCtx::new();
         let q = AtomicUsize::new(0);
-        let a = turns.take(&ctx, &q).unwrap();
-        let _b = turns.take(&ctx, &q).unwrap();
+        let a = turns.take(&ctx, &q, None).unwrap();
+        let _b = turns.take(&ctx, &q, None).unwrap();
         // A third waits until one is given back, and says where it stands meanwhile.
         let waiting = Arc::new(AtomicUsize::new(0));
         let (t, w) = (Arc::clone(&turns), Arc::clone(&waiting));
         let third = std::thread::spawn(move || {
             let ctx = JobCtx::new();
-            t.take(&ctx, &w).map(|_| ()).is_ok()
+            t.take(&ctx, &w, None).map(|_| ()).is_ok()
         });
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
         while waiting.load(Ordering::Relaxed) != 1 && std::time::Instant::now() < deadline {
@@ -182,19 +185,38 @@ mod tests {
         let q = AtomicUsize::new(0);
         let first = JobCtx::new();
         // Its request is still on the way (the turn isn't dropped), but it was cancelled.
-        let _held = turns.take(&first, &q).unwrap();
+        let _held = turns.take(&first, &q, None).unwrap();
         first.cancel();
-        assert!(turns.take(&JobCtx::new(), &q).is_ok());
+        assert!(turns.take(&JobCtx::new(), &q, None).is_ok());
+    }
+
+    #[test]
+    fn a_provider_can_take_fewer_turns_at_once() {
+        let turns = Arc::new(Turns::new(5));
+        let q = AtomicUsize::new(0);
+        let _held = turns.take(&JobCtx::new(), &q, Some(1)).unwrap();
+        // A provider without a limit of its own still gets one.
+        assert!(turns.take(&JobCtx::new(), &q, None).is_ok());
+        let ctx = JobCtx::new();
+        let t = Arc::clone(&turns);
+        let waiting = std::thread::spawn(move || {
+            let w = AtomicUsize::new(0);
+            t.take(&ctx, &w, Some(1)).is_ok()
+        });
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert!(!waiting.is_finished(), "only one at a time for a provider that takes one");
+        drop(_held);
+        assert!(waiting.join().unwrap());
     }
 
     #[test]
     fn a_cancelled_wait_leaves_the_line() {
         let turns = Turns::new(1);
         let q = AtomicUsize::new(0);
-        let _held = turns.take(&JobCtx::new(), &q).unwrap();
+        let _held = turns.take(&JobCtx::new(), &q, None).unwrap();
         let ctx = JobCtx::new();
         ctx.cancel();
-        assert!(matches!(turns.take(&ctx, &q), Err(EngineError::Cancelled)));
+        assert!(matches!(turns.take(&ctx, &q, None), Err(EngineError::Cancelled)));
         assert!(turns.line.lock().unwrap().waiting.is_empty());
     }
 }

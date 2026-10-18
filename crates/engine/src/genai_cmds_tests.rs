@@ -897,3 +897,126 @@ fn each_separate_area_can_be_filled_on_its_own() {
     s.execute("select.deselect", json!({})).unwrap();
     assert!(s.execute(AREAS, json!({})).is_err(), "needs a selection");
 }
+
+// ---- What providers ask for: mask form, working size, one request at a time, progress ----------
+
+/// Wraps a [`Fake`], overriding what each kind of provider declares.
+struct Kind {
+    fake: Arc<Fake>,
+    mask: photocraft_genai::MaskFormat,
+    side: Option<u32>,
+    parallel: Option<usize>,
+    /// Reported before each answer, with a pause after it.
+    report: Option<(f32, std::time::Duration)>,
+}
+
+impl Kind {
+    fn new(fake: Arc<Fake>) -> Kind {
+        Kind { fake, mask: photocraft_genai::MaskFormat::Luma, side: None, parallel: None, report: None }
+    }
+}
+
+impl ImageProvider for Kind {
+    fn info(&self) -> ProviderInfo {
+        self.fake.info()
+    }
+    fn capabilities(&self) -> Capabilities {
+        self.fake.capabilities()
+    }
+    fn mask_format(&self) -> photocraft_genai::MaskFormat {
+        self.mask
+    }
+    fn request_size(&self, w: u32, h: u32) -> (u32, u32) {
+        match self.side {
+            Some(side) => {
+                let k = f64::from(side) / f64::from(w.max(h));
+                (((f64::from(w) * k).round() as u32).max(1), ((f64::from(h) * k).round() as u32).max(1))
+            }
+            None => (w, h),
+        }
+    }
+    fn max_parallel(&self) -> Option<usize> {
+        self.parallel
+    }
+    fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
+        self.fake.edit(r)
+    }
+    fn edit_with_progress(&self, r: &EditRequest, progress: &dyn photocraft_genai::Progress) -> photocraft_genai::Result<GeneratedImage> {
+        if let Some((fraction, pause)) = self.report {
+            progress.report(fraction, "Step 4 of 8");
+            std::thread::sleep(pause);
+        }
+        self.fake.edit(r)
+    }
+}
+
+/// A provider that takes its mask transparent where the image is to change (OpenAI) gets it so,
+/// transparent wherever any of the selection is; the request kept for Generate More stays black
+/// and white, so it suits whichever provider is set up later.
+#[test]
+fn a_provider_that_takes_an_alpha_mask_gets_one() {
+    let fake = Fake::new([0, 0, 255]);
+    let mut s = session(64, 64);
+    s.execute("select.rect", json!({"x": 16, "y": 16, "width": 16, "height": 16})).unwrap();
+    s.set_image_provider(Some(Arc::new(Kind { mask: photocraft_genai::MaskFormat::Alpha, ..Kind::new(fake.clone()) })));
+    s.execute(FILL, json!({"prompt": "x", "variations": 1})).unwrap();
+    let mask = codecs::decode(&fake.sent.lock().unwrap()[0].mask).unwrap().convert(ChannelLayout::Rgba, CodecSample::U8);
+    let alpha = |x: u32, y: u32| mask.data()[((y * mask.width() + x) * 4 + 3) as usize];
+    assert_eq!((mask.width(), mask.height()), (64, 64));
+    assert_eq!(alpha(24, 24), 0, "transparent where it is to change");
+    assert_eq!(alpha(2, 2), 255);
+    let more = s.execute(MORE, json!({"count": 1})).unwrap();
+    assert_eq!(more["variations"].as_array().unwrap().len(), 1);
+    // Generate More with a black-and-white provider: the kept mask is still black and white.
+    let luma = Fake::new([0, 255, 0]);
+    s.set_image_provider(Some(luma.clone()));
+    s.execute(MORE, json!({"count": 1})).unwrap();
+    let mask = codecs::decode(&luma.sent.lock().unwrap()[0].mask).unwrap().convert(ChannelLayout::Rgba, CodecSample::U8);
+    assert_eq!(&mask.data()[((24 * 64 + 24) * 4) as usize..][..4], &[255, 255, 255, 255]);
+}
+
+/// A provider with a small working size gets the image at that size and its result is scaled back
+/// over the selection; one that takes one request at a time gets the variations one after another.
+#[test]
+fn a_small_working_size_and_one_request_at_a_time() {
+    let fake = slow(20);
+    let mut s = session(100, 100);
+    s.execute("select.rect", json!({"x": 30, "y": 30, "width": 40, "height": 40})).unwrap();
+    s.set_image_provider(Some(Arc::new(Kind { side: Some(32), parallel: Some(1), ..Kind::new(fake.clone()) })));
+    let r = s.execute(FILL, json!({"prompt": "x", "variations": 3})).unwrap();
+    assert_eq!(r["variations"].as_array().unwrap().len(), 3);
+    let sent = fake.sent.lock().unwrap();
+    assert!(sent.iter().all(|r| photocraft_genai::png_size(&r.image) == Some((32, 32)) && photocraft_genai::png_size(&r.mask) == Some((32, 32))));
+    assert_eq!(fake.peak.load(Ordering::SeqCst), 1, "one at a time");
+    drop(sent);
+    assert_eq!(rgb_at(&s, 50, 50), [255, 0, 0], "scaled back over the selection");
+    assert_eq!(rgb_at(&s, 10, 10), [255, 255, 255]);
+}
+
+/// Fills on a provider that takes one request at a time wait for each other, and what it reports
+/// shows on the fill while it runs.
+#[test]
+fn a_provider_that_takes_one_at_a_time_queues_fills_and_reports_progress() {
+    let fake = Fake::new([255, 0, 0]);
+    let mut s = session(200, 100);
+    let provider = Kind { parallel: Some(1), report: Some((0.5, std::time::Duration::from_millis(300))), ..Kind::new(fake.clone()) };
+    s.set_image_provider(Some(Arc::new(provider)));
+    s.execute("select.rect", json!({"x": 10, "y": 10, "width": 30, "height": 30})).unwrap();
+    let first = started(&mut s, FILL, json!({"prompt": "a", "variations": 1}));
+    s.execute("select.rect", json!({"x": 120, "y": 40, "width": 40, "height": 40})).unwrap();
+    let second = started(&mut s, FILL, json!({"prompt": "b", "variations": 1}));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    let (mut saw_progress, mut saw_queue) = (false, false);
+    while std::time::Instant::now() < deadline && !(saw_progress && saw_queue) {
+        for f in s.generative_fills() {
+            saw_progress |= f.provider_progress == Some(0.5);
+            saw_queue |= f.state == "queued" && f.queue_position == 1;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert!(saw_progress && saw_queue, "progress {saw_progress}, queue {saw_queue}");
+    s.wait_job(first).unwrap();
+    s.wait_job(second).unwrap();
+    assert_eq!(fake.peak.load(Ordering::SeqCst), 1);
+    assert_eq!(doc(&s).layers.len(), 3);
+}

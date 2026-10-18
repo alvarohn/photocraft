@@ -15,12 +15,18 @@ const SECRET: &str = "AIza-ui-test-secret";
 
 /// Fills with solid red at the request's size and remembers the key it was built with.
 struct Fake {
+    id: &'static str,
     model: String,
 }
 
 impl ImageProvider for Fake {
     fn info(&self) -> ProviderInfo {
-        ProviderInfo { id: "gemini", name: "Google Gemini", model: self.model.clone(), host: "example.invalid" }
+        let name = match self.id {
+            "openai" => "OpenAI",
+            "sdcpp" => "stable-diffusion.cpp (local)",
+            _ => "Google Gemini",
+        };
+        ProviderInfo { id: self.id, name, model: self.model.clone(), host: "example.invalid" }
     }
     fn capabilities(&self) -> Capabilities {
         Capabilities { generate: false, edit: true, variations: false, edit_in_place: true, max_references: 4 }
@@ -48,9 +54,17 @@ fn services(store: &Store) -> GenAiServices {
             c.borrow_mut().remove(p);
             Ok(())
         }),
-        provider: Box::new(|_, model, key: ApiKey| {
-            assert_eq!(key.expose(), SECRET);
-            Ok(Arc::new(Fake { model: model.into() }))
+        provider: Box::new(|id, model, _options, key: Option<ApiKey>| {
+            let id = match id {
+                "openai" => "openai",
+                "sdcpp" => "sdcpp",
+                _ => "gemini",
+            };
+            match key {
+                Some(key) => assert_eq!(key.expose(), SECRET),
+                None => assert_eq!(id, "sdcpp", "a provider that takes a key is never built without one"),
+            }
+            Ok(Arc::new(Fake { id, model: model.into() }))
         }),
         key_store_name: "the test store",
     }
@@ -129,6 +143,52 @@ fn choosing_none_turns_it_off_and_cancel_forgets_the_typed_key() {
     crate::dialogs::confirm(&mut app, id).unwrap();
     assert!(app.session.image_provider().is_none());
     assert!(!fill_in_menu(&app));
+}
+
+/// Picks `provider` in the open settings dialog `id`, as its dropdown does.
+fn pick_provider(app: &mut PhotocraftApp, id: u64, provider: &str) {
+    let mut f = app.ui.dialogs.iter().find(|d| d.id == id).unwrap().fields.clone();
+    providers::load_fields(app, &mut f, provider);
+    app.ui.dialog_mut(id).unwrap().fields = f;
+}
+
+/// OpenAI has its own model, options and key; going back to Gemini finds Gemini's as they were.
+#[test]
+fn openai_keeps_its_own_model_options_and_key() {
+    let store = Store::default();
+    store.borrow_mut().insert("gemini".into(), SECRET.into());
+    let mut app = app_with(&store);
+    let id = open_settings(&mut app);
+    app.ui.dialog_mut(id).unwrap().fields.insert("model".into(), json!("gemini-3-pro-image"));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+
+    let id = open_settings(&mut app);
+    pick_provider(&mut app, id, "openai");
+    assert_eq!(fields(&app, id)["model"], photocraft_genai::openai::DEFAULT_MODEL);
+    assert_eq!(fields(&app, id)["hasKey"], false);
+    let options = json!({"quality": "medium", "resolution": 3840, "format": "jpeg", "compression": 80});
+    app.ui.dialog_mut(id).unwrap().fields.insert("options".into(), options.clone());
+    app.genai.key_input = SECRET.into();
+    let r = crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(r["ready"], true);
+    assert_eq!(store.borrow().get("openai").map(String::as_str), Some(SECRET));
+    assert_eq!(app.session.image_provider().unwrap().info().id, "openai");
+    let pref = app.session.prefs().dialogs.get(PREF).unwrap().clone();
+    assert_eq!(pref["provider"], "openai");
+    assert_eq!(pref["options"]["openai"]["quality"], "medium");
+    assert_eq!(pref["options"]["openai"]["model"], photocraft_genai::openai::DEFAULT_MODEL);
+    assert!(!serde_json::to_string(&app.session.prefs().to_json()).unwrap().contains(SECRET));
+
+    // Opened again: OpenAI with its options; back to Gemini: its model and saved key.
+    let id = open_settings(&mut app);
+    assert_eq!(fields(&app, id)["options"]["format"], "jpeg");
+    assert_eq!(fields(&app, id)["hasKey"], true);
+    pick_provider(&mut app, id, "gemini");
+    assert_eq!(fields(&app, id)["model"], "gemini-3-pro-image");
+    assert_eq!(fields(&app, id)["hasKey"], true);
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(app.session.image_provider().unwrap().info().id, "gemini");
+    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["options"]["openai"]["quality"], "medium", "kept for next time");
 }
 
 #[test]
@@ -353,6 +413,28 @@ fn the_dialogs_render() {
     h.get_by_label("Generative Fill…");
     if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-options-bar.png")).unwrap();
+    }
+}
+
+/// Renders OpenAI's settings for a look (`GENAI_SNAPSHOT_DIR=… cargo test`).
+#[test]
+fn openai_settings_render() {
+    let store = Store::default();
+    let store2 = store.clone();
+    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
+        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
+        let mut app = app_with(&store2);
+        let id = open_settings(&mut app);
+        pick_provider(&mut app, id, "openai");
+        app.ui.dialog_mut(id).unwrap().fields.insert("options".into(), json!({"format": "jpeg"}));
+        app
+    });
+    h.run_steps(6);
+    h.get_by_label("Get an OpenAI API key");
+    h.get_by_label("Working resolution");
+    h.get_by_label("Quality (compression)");
+    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+        img.save(std::path::Path::new(&dir).join("genai-settings-openai.png")).unwrap();
     }
 }
 

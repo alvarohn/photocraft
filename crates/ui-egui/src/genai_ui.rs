@@ -1,4 +1,5 @@
-//! Generative AI in the shell (#41): Generative AI Settings (provider, model and API key), the
+//! Generative AI in the shell (#41): Generative AI Settings (provider, model, its options and API
+//! key; the providers and their options are in [`providers`]), the
 //! Edit › Generative Fill prompt (Fill or Edit, with optional reference images), and installing
 //! the configured provider on the session.
 //!
@@ -29,11 +30,11 @@ const MAX_SEPARATE: usize = 16;
 const REFERENCE_THUMB: u32 = 64;
 const SETTINGS_MARK: &str = "__genaiSettings";
 const PROMPT_MARK: &str = "__genaiPrompt";
-/// `prefs.dialogs` entry holding `{"provider", "model"}`.
+/// `prefs.dialogs` entry holding `{"provider", "model", "options"}`.
 const PREF: &str = "ui.generativeAiSettings";
-const KEY_PAGE: &str = "https://aistudio.google.com/apikey";
 
 mod pending;
+mod providers;
 
 pub use pending::{is_generative, layer_rows, layer_rows_unplaced, on_job_event, paint_canvas as paint_pending, status as status_fills};
 
@@ -60,11 +61,6 @@ enum Preview {
     Texture(egui::TextureHandle),
 }
 
-/// Providers the settings offer: (id, name). Only providers the app can build appear.
-fn providers() -> Vec<(String, &'static str)> {
-    vec![(String::new(), tl!("None")), (photocraft_genai::gemini::ID.into(), photocraft_genai::gemini::NAME)]
-}
-
 fn saved(app: &PhotocraftApp) -> (String, String) {
     let v = app.session.prefs().dialogs.get(PREF);
     let get = |k: &str| v.and_then(|v| v.get(k)).and_then(Value::as_str).unwrap_or("").to_owned();
@@ -82,12 +78,17 @@ pub fn restore(app: &mut PhotocraftApp) -> Result<(), String> {
     let Some(services) = app.services.genai.as_ref() else {
         return Ok(());
     };
-    let key = (services.load_key)(&provider)?.and_then(|k| photocraft_genai::ApiKey::new(&k));
-    let Some(key) = key else {
-        app.session.set_image_provider(None);
-        return Err(crate::i18n::fmt(tl!("No API key is saved for {provider}."), &[("provider", &provider)]));
+    let key = if providers::needs_key(&provider) {
+        let key = (services.load_key)(&provider)?.and_then(|k| photocraft_genai::ApiKey::new(&k));
+        let Some(key) = key else {
+            app.session.set_image_provider(None);
+            return Err(crate::i18n::fmt(tl!("No API key is saved for {provider}."), &[("provider", &provider)]));
+        };
+        Some(key)
+    } else {
+        None
     };
-    let built = (services.provider)(&provider, &model, key)?;
+    let built = (services.provider)(&provider, &model, &providers::saved_options(app, &provider), key)?;
     app.session.set_image_provider(Some(built));
     Ok(())
 }
@@ -129,21 +130,15 @@ pub fn open_settings(app: &mut PhotocraftApp) -> u64 {
         return d.id;
     }
     app.genai.key_input.clear();
-    let (mut provider, mut model) = saved(app);
+    let (mut provider, _) = saved(app);
     if provider.is_empty() {
-        // Opening the settings is the way to turn it on: start on the one provider there is.
+        // Opening the settings is the way to turn it on: start on the first provider.
         provider = photocraft_genai::gemini::ID.into();
     }
-    if model.is_empty() {
-        model = photocraft_genai::gemini::DEFAULT_MODEL.into();
-    }
-    let has_key = app.services.genai.as_ref().and_then(|s| (s.load_key)(&provider).ok().flatten()).is_some();
     let mut f = Map::new();
     f.insert(SETTINGS_MARK.into(), json!(true));
     f.insert("__label".into(), json!("Generative AI Settings"));
-    f.insert("provider".into(), json!(provider));
-    f.insert("model".into(), json!(model));
-    f.insert("hasKey".into(), json!(has_key));
+    providers::load_fields(app, &mut f, &provider);
     app.ui.open_dialog(DialogKind::Command, f)
 }
 
@@ -183,7 +178,7 @@ fn chosen_variations(app: &PhotocraftApp) -> u64 {
 /// What the configured provider can do in the prompt dialog: (edit in place, most references).
 fn prompt_capabilities(app: &PhotocraftApp) -> (bool, usize) {
     let caps = app.session.image_provider().map(|p| p.capabilities()).unwrap_or_default();
-    (caps.edit_in_place, caps.max_references.min(photocraft_genai::MAX_REFERENCES))
+    (caps.edit_in_place, caps.max_references.min(photocraft_genai::REFERENCES_LIMIT))
 }
 
 /// A `references` entry's identity, for its preview.
@@ -411,6 +406,19 @@ fn prompt_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, V
     areas_section(ui, f);
     ui.add_space(8.0);
     variations_row(ui, f);
+    // What it costs, where the provider bills per image and publishes its prices.
+    let n = f.get("variations").and_then(Value::as_u64).unwrap_or(1);
+    let area = photocraft_engine::genai_cmds::fill_area(&app.session);
+    if let Some(usd) = area.and_then(|a| app.session.image_provider().and_then(|p| p.estimated_cost(a.width(), a.height()))) {
+        ui.add_space(2.0);
+        faint(
+            ui,
+            &crate::i18n::fmt(
+                tl!("About US${cost} in all ({n} × US${each}, the provider's published prices)."),
+                &[("cost", &format!("{:.2}", usd * n as f64)), ("n", &n.to_string()), ("each", &format!("{usd:.3}"))],
+            ),
+        );
+    }
     ui.add_space(8.0);
     if let Some(info) = app.session.image_provider().map(|p| p.info()) {
         faint(
@@ -473,73 +481,24 @@ fn areas_section(ui: &mut egui::Ui, f: &mut Map<String, Value>) {
 }
 
 fn settings_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String, Value>) {
-    let t = crate::theme::Tokens::get(ui.ctx());
     if app.services.genai.is_none() {
         faint(ui, tl!("Generative AI needs the desktop app."));
         return;
     }
     let mut provider = f.get("provider").and_then(Value::as_str).unwrap_or("").to_owned();
-    let options = providers();
+    let options = providers::list();
     let opts: Vec<(String, &str)> = options.iter().map(|(id, name)| (id.clone(), *name)).collect();
     egui::Grid::new("genai-settings").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
         ui.label(tl!("Provider"));
         if crate::widgets::dropdown(ui, "genai-provider", &mut provider, &opts, 220.0) {
-            f.insert("provider".into(), json!(provider));
+            // Another provider: its own model, options and key.
+            providers::load_fields(app, f, &provider);
+            app.genai.key_input.clear();
         }
         ui.end_row();
-        if provider == photocraft_genai::gemini::ID {
-            ui.label(tl!("Model"));
-            let mut model = f.get("model").and_then(Value::as_str).unwrap_or(photocraft_genai::gemini::DEFAULT_MODEL).to_owned();
-            let models: Vec<(String, &str)> = photocraft_genai::gemini::MODELS.iter().map(|(id, name)| ((*id).to_owned(), *name)).collect();
-            if crate::widgets::dropdown(ui, "genai-model", &mut model, &models, 220.0) {
-                f.insert("model".into(), json!(model));
-            }
-            ui.end_row();
-            ui.label(tl!("API key"));
-            let has_key = f.get("hasKey").and_then(Value::as_bool) == Some(true);
-            ui.horizontal(|ui| {
-                let hint = if has_key { tl!("Saved (paste to replace)") } else { tl!("Paste your Gemini API key") };
-                let r = ui.add(egui::TextEdit::singleline(&mut app.genai.key_input).password(true).hint_text(hint).desired_width(220.0));
-                crate::field_tab::register(ui.ctx(), r.id);
-                if has_key && crate::widgets::secondary_button(ui, tl!("Remove Key"), 0.0).clicked() {
-                    let removed = app.services.genai.as_ref().map(|s| (s.delete_key)(&provider));
-                    match removed {
-                        Some(Ok(())) => {
-                            f.insert("hasKey".into(), json!(false));
-                            app.session.set_image_provider(None);
-                        }
-                        Some(Err(e)) => app.ui.status = e,
-                        None => {}
-                    }
-                }
-            });
-            ui.end_row();
-        }
+        providers::rows(app, ui, f, &provider);
     });
-    if provider == photocraft_genai::gemini::ID {
-        ui.add_space(4.0);
-        if ui.link(tl!("Get a Gemini API key from Google AI Studio")).clicked() {
-            crate::links::open(app, &ui.ctx().clone(), KEY_PAGE);
-        }
-        ui.add_space(8.0);
-        crate::widgets::hairline(ui);
-        ui.add_space(6.0);
-        ui.label(egui::RichText::new(tl!("What is sent, and to whom")).font(crate::theme::semibold(12.5)).color(t.text));
-        ui.add_space(2.0);
-        faint(
-            ui,
-            tl!(
-                "Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark."
-            ),
-        );
-        ui.add_space(4.0);
-        faint(ui, tl!("In Edit mode the selected area is sent as it is. Reference images you add are sent too."));
-        ui.add_space(4.0);
-        faint(ui, tl!("Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key."));
-        ui.add_space(4.0);
-        let store = app.services.genai.as_ref().map_or("", |s| s.key_store_name);
-        faint(ui, &crate::i18n::fmt(tl!("Your key is kept in {store}, never in PhotoCraft's settings files."), &[("store", tl!(store))]));
-    }
+    providers::notes(app, ui, f, &provider);
 }
 
 /// OK: remember the choice, save a newly typed key, and install the provider (or remove it).
@@ -594,15 +553,20 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
     let typed = std::mem::take(&mut app.genai.key_input);
     let provider = f.get("provider").and_then(Value::as_str).unwrap_or("").to_owned();
     let model = f.get("model").and_then(Value::as_str).unwrap_or("").to_owned();
+    let options = f.get("options").filter(|o| o.is_object()).cloned().unwrap_or_else(|| json!({}));
     if !provider.is_empty() {
         let services = app.services.genai.as_ref().ok_or_else(|| tl!("Generative AI needs the desktop app.").to_string())?;
-        if let Some(key) = photocraft_genai::ApiKey::new(&typed) {
+        if !providers::needs_key(&provider) {
+            // Check the settings (the server's address) before they are kept; nothing is contacted.
+            (services.provider)(&provider, &model, &options, None)?;
+        } else if let Some(key) = photocraft_genai::ApiKey::new(&typed) {
             // Check the provider builds (model id) before the key is stored.
-            (services.provider)(&provider, &model, key.clone())?;
+            (services.provider)(&provider, &model, &options, Some(key.clone()))?;
             (services.save_key)(&provider, key.expose())?;
         }
     }
-    app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), json!({"provider": provider, "model": model})));
+    let remembered = providers::remembered(app, &provider, &model, &options);
+    app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), remembered));
     restore(app)?;
     Ok(json!({"provider": provider, "model": model, "ready": app.session.image_provider().is_some()}))
 }
