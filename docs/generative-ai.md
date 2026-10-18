@@ -191,7 +191,10 @@ sd-server --listen-port 1234 --diffusion-model <Qwen Image 2.1 Turbo>.gguf --llm
 ```
 
 `--llm_vision` (the text encoder's vision weights) is what lets Qwen Image 2.1 read reference
-images; without it it can't edit. Which device runs each part (`--backend`, `--max-vram`,
+images. With the Qwen Image 2.1 Turbo preset PhotoCraft always sends the image as a reference, so
+a server started without it fails every fill ("Qwen Image 2.1 editing requires Qwen3-VL vision
+weights"); to use such a server as a plain inpainter, pick *Other model* with *It edits from
+instructions* unticked (and set its steps to 8, guidance to 1). Which device runs each part (`--backend`, `--max-vram`,
 `--offload-to-cpu`) depends on the GPU: on a 2 GB GTX 1050 (Vulkan, October 2026) Z-Image Turbo ran
 at 512×512 in 3.8 minutes with `--backend Vulkan1 --offload-to-cpu --vae-tiling`, and Qwen Image 2.1
 Turbo in 5.9 minutes with `--backend "te=Vulkan1,diffusion=Vulkan1,vae=CPU" --vae-tiling

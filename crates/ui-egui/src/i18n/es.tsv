@@ -4300,3 +4300,4 @@ navigator	Zoom	Zoom
 	Stopped: {why}	Se detuvo: {why}
 	Generative Batch failed: {error}	El lote generativo falló: {error}
 	Generative Batch cancelled; the files already written are kept.	Lote generativo cancelado; se conservan los archivos ya escritos.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Los ajustes de IA generativa solo se pueden cambiar desde PhotoCraft, no por automatización.

@@ -44,6 +44,9 @@ pub use pending::{is_generative, layer_rows, layer_rows_unplaced, paint_canvas a
 pub struct Runtime {
     /// What is typed in the settings dialog's key field. Cleared when the dialog closes.
     key_input: String,
+    /// The provider the key field was showing when it was typed into: OK saves the key only for
+    /// it, whatever the dialog's (inspectable, settable) fields say by then.
+    key_provider: String,
     /// Variation thumbnails for the Properties panel, by variation layer: (pixels fingerprint,
     /// texture).
     thumbs: std::collections::HashMap<LayerId, (u64, egui::TextureHandle)>,
@@ -166,6 +169,7 @@ pub fn open_settings(app: &mut PhotocraftApp) -> u64 {
     f.insert(SETTINGS_MARK.into(), json!(true));
     f.insert("__label".into(), json!("Generative AI Settings"));
     providers::load_fields(app, &mut f, &provider);
+    app.genai.key_provider = provider;
     app.ui.open_dialog(DialogKind::Command, f)
 }
 
@@ -526,6 +530,7 @@ fn settings_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String,
             // Another provider: its own model, options and key.
             providers::load_fields(app, f, &provider);
             app.genai.key_input.clear();
+            app.genai.key_provider = provider.clone();
         }
         ui.end_row();
         providers::rows(app, ui, f, &provider);
@@ -585,8 +590,16 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
         }
         return r;
     }
+    // Automation may not choose where the user's fills go (a server address of its own) any more
+    // than it may run them (#41).
+    if app.session.authorize.is_some() {
+        app.genai.key_input.clear();
+        return Err(tl!("Generative AI Settings can only be changed in PhotoCraft itself, not by automation.").into());
+    }
     let typed = std::mem::take(&mut app.genai.key_input);
     let provider = f.get("provider").and_then(Value::as_str).unwrap_or("").to_owned();
+    // A key typed while another provider was shown is never saved under this one.
+    let typed = if std::mem::take(&mut app.genai.key_provider) == provider { typed } else { String::new() };
     let model = f.get("model").and_then(Value::as_str).unwrap_or("").to_owned();
     let options = f.get("options").filter(|o| o.is_object()).cloned().unwrap_or_else(|| json!({}));
     if !provider.is_empty() {

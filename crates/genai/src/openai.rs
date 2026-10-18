@@ -174,7 +174,7 @@ impl<T: HttpTransport> OpenAiProvider<T> {
         let error = serde_json::from_slice::<Value>(body).ok().and_then(|v| v.get("error").cloned());
         let field = |k: &str| error.as_ref().and_then(|e| e.get(k)).and_then(Value::as_str).unwrap_or("").to_owned();
         let (message, code, kind) = (field("message"), field("code"), field("type"));
-        let message = if message.is_empty() { code.clone() } else { clip(&self.key.scrub(&message), 300) };
+        let message = clip(&self.key.scrub(if message.is_empty() { &code } else { &message }), 300);
         // Retrying a used-up balance or a spending limit doesn't restore access.
         const BILLING: &[&str] = &[
             "insufficient_quota",
@@ -625,6 +625,7 @@ mod tests {
                 GenError::Refused("Your request was rejected by the safety system".into()),
             ),
             (err(400, "invalid_value", &format!("bad size {KEY}")), GenError::Http { status: 400, message: "bad size [key]".into() }),
+            (err(400, &format!("odd_{KEY}"), ""), GenError::Http { status: 400, message: "odd_[key]".into() }),
             (
                 Fake::status(
                     503,

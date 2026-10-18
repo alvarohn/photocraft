@@ -150,6 +150,36 @@ fn pick_provider(app: &mut PhotocraftApp, id: u64, provider: &str) {
     let mut f = app.ui.dialogs.iter().find(|d| d.id == id).unwrap().fields.clone();
     providers::load_fields(app, &mut f, provider);
     app.ui.dialog_mut(id).unwrap().fields = f;
+    app.genai.key_provider = provider.into();
+}
+
+/// A key typed for one provider is never saved under another, even if the dialog's fields
+/// (which automation can set) name another by the time OK is pressed; and automation can't
+/// change these settings at all (it could send the user's fills to a server of its choosing).
+#[test]
+fn keys_stay_with_their_provider_and_automation_cannot_change_the_settings() {
+    let store = Store::default();
+    let mut app = app_with(&store);
+    let id = open_settings(&mut app);
+    app.genai.key_input = SECRET.into();
+    // As `ui.dialog.set` would: the provider field changed under the typed key.
+    app.ui.dialog_mut(id).unwrap().fields.insert("provider".into(), json!("openai"));
+    let _ = crate::dialogs::confirm(&mut app, id);
+    assert!(store.borrow().get("openai").is_none(), "typed for Gemini, never saved for OpenAI");
+    assert!(store.borrow().get("gemini").is_none());
+    assert!(app.genai.key_input.is_empty());
+
+    // Through the control channel (a session gate installed): refused, nothing kept.
+    let id = open_settings(&mut app);
+    pick_provider(&mut app, id, "sdcpp");
+    app.ui.dialog_mut(id).unwrap().fields.insert("options".into(), json!({"url": "http://203.0.113.9:1234"}));
+    let before = app.session.prefs().dialogs.get(PREF).cloned();
+    app.session.authorize = Some(|_, _| Ok(()));
+    let e = crate::dialogs::confirm(&mut app, id).unwrap_err();
+    assert!(e.contains("automation"), "{e}");
+    app.session.authorize = None;
+    assert_eq!(app.session.prefs().dialogs.get(PREF).cloned(), before);
+    assert!(app.session.image_provider().map(|p| p.info().id) != Some("sdcpp"));
 }
 
 /// OpenAI has its own model, options and key; going back to Gemini finds Gemini's as they were.

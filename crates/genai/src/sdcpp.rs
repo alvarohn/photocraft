@@ -133,7 +133,8 @@ impl Options {
 /// (no user name or password, query or fragment). Returns it without a trailing `/`.
 pub fn check_url(url: &str) -> Result<String> {
     let url = url.trim().trim_end_matches('/');
-    let bad = || GenError::Invalid(format!("`{url}` is not a server address like {DEFAULT_URL}"));
+    // The address isn't repeated: a pasted one may hold a user name and password.
+    let bad = || GenError::Invalid(format!("the server address must be like {DEFAULT_URL}: http or https, a host, a port and a path, nothing else"));
     let rest = url.strip_prefix("http://").or_else(|| url.strip_prefix("https://")).ok_or_else(bad)?;
     let host = rest.split('/').next().unwrap_or("");
     let path_ok = rest[host.len()..].bytes().all(|b| b.is_ascii_alphanumeric() || b"/-._~".contains(&b));
@@ -665,6 +666,7 @@ mod tests {
         for bad in ["ftp://x", "http://", "http://user:pw@host", "http://h/?q=1", "http://h/#f", "javascript:alert(1)", "http://h h"] {
             assert!(check_url(bad).is_err(), "{bad}");
         }
+        assert!(!check_url("http://me:hunter2@host:1234").unwrap_err().to_string().contains("hunter2"), "never repeated");
         assert_eq!(check_url("https://gpu.local:1234/sd/").unwrap(), "https://gpu.local:1234/sd");
         assert!(SdCppProvider::new(Options { url: "nonsense".into(), ..Options::preset(DEFAULT_PRESET) }, Fake::new(Vec::new())).is_err());
     }
