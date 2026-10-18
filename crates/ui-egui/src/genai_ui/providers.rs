@@ -78,15 +78,17 @@ pub(super) fn saved_model(app: &PhotocraftApp, provider: &str) -> String {
 }
 
 /// The preference entry after OK: the provider and model chosen, and every provider's options
-/// (the chosen one's replaced, with its model, so switching back finds it).
+/// (the chosen one's replaced, with its model, so switching back finds it). Keep what is sent and
+/// returned stays as it was.
 pub(super) fn remembered(app: &PhotocraftApp, provider: &str, model: &str, options: &Value) -> Value {
+    let keep = super::keeps(app);
     let mut all = app.session.prefs().dialogs.get(super::PREF).and_then(|v| v.get("options")).and_then(Value::as_object).cloned().unwrap_or_default();
     if !provider.is_empty() {
         let mut o = options.as_object().cloned().unwrap_or_default();
         o.insert("model".into(), json!(model));
         all.insert(provider.into(), Value::Object(o));
     }
-    json!({"provider": provider, "model": model, "options": all})
+    json!({"provider": provider, "model": model, "options": all, "keep": keep})
 }
 
 /// Fill the dialog's fields for `provider` (on open, and when another provider is picked).
@@ -250,6 +252,17 @@ fn sdcpp_rows(ui: &mut egui::Ui, f: &mut Map<String, Value>, preset: &str) {
         .changed()
     {
         set_opt(f, "strength", json!((strength / 100.0).clamp(0.05, 1.0)));
+    }
+    ui.end_row();
+    ui.label(tl!("Room past the selection"));
+    let mut room = o.room * 100.0;
+    if crate::widgets::value_field(ui, &mut room, 0.0..=100.0, "%", 64.0)
+        .on_hover_text(tl!(
+            "How far past the selection the model may draw, as a share of the selection's size: what it draws there is in the layer, hidden by its mask (paint the mask to show it). 0%: only inside the selection, which matches its edges best."
+        ))
+        .changed()
+    {
+        set_opt(f, "room", json!((room / 100.0).clamp(0.0, 1.0)));
     }
     ui.end_row();
     ui.label(tl!("Working size"));

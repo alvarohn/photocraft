@@ -189,9 +189,16 @@ the placeholder, and Edit the selection as it is. This is from reading the serve
 couldn't be measured against a real model here (the models' hosts aren't reachable from the
 cloud build), so the strength setting is there to tune it.
 
-The mask is black and white; the server rounds it at 50% and widens it to its 8-pixel latent grid,
-and PhotoCraft keeps only the selection's own pixels of the result (with its soft edge), as for
-every provider.
+The mask is black and white; the server rounds it at 50% and widens it to its 8-pixel latent grid.
+At every step it puts everything outside the mask back as it was (`denoised = denoised × mask +
+original × (1 − mask)`, `diffusion_engine.cpp`), so a model that isn't made for filling holes (Z-Image
+Turbo) can't draw past it: an object larger than the selection comes out cut at its edge (a rubber
+duck without its head and feet, in the first run on the owner's PC). **Room past the selection**
+(0% by default) sends a mask that reaches that far past it, as a share of the selection's longer
+side: what the model draws there lands in the variation, hidden by the group's mask, and painting
+that mask shows it. At 0% the model sees the original right up to the selection's edge, which
+matches the edges best; with room, the ring around it is drawn anew and may not match the
+original outside it.
 
 Running `sd-server` (from stable-diffusion.cpp's releases; Vulkan builds run on most GPUs). Which
 device runs each part (the text encoder `te`, the diffusion model and the VAE) and any other option
@@ -269,8 +276,11 @@ references.
 
 Gemini takes no mask parameter, so the mask is a second image and the instruction says what it
 means. OpenAI takes the mask as a parameter; its instruction says only that the masked area is
-the one to edit (and, in Fill, that it was blurred out). PhotoCraft keeps only the masked pixels of the result, so anything the model changes
-outside the selection is discarded. The model redraws the whole image and relights it,
+the one to edit (and, in Fill, that it was blurred out). Each variation layer holds the whole
+area returned (the selection and the context around it), and the group's mask, the selection,
+shows only the selection's part, as Photoshop's generative layer does: what the model changed
+outside the selection is hidden, not thrown away, and painting the group's mask shows it (an
+object that runs past the selection, say). The model redraws the whole image and relights it,
 differently each time (Gemini often lifts dark shadows to nearly double), which would leave a
 seam at the selection's edge; the area outside the selection should come back unchanged, so
 comparing it with the original measures the change (`match_surroundings`). A tone curve on
@@ -279,10 +289,14 @@ the edge by push-pull. Pixels the model actually changed (different fine detail,
 moved an object, or a far different colour) are left out of both. A result that doesn't resemble
 the original around the selection (over 25% mean difference) is left as it came.
 
-To debug a provider, start the app with `PHOTOCRAFT_GENAI_DUMP=<folder>`: each request's image,
-mask, prompt, mode, reference images, raw results and colour-matching figures are written to a new
-subfolder there. Nothing
-is written without it. For tuning, the ignored test `live_fill` in `apps/photocraft/src/genai.rs`
+**Keep what is sent and returned** (Generative AI Settings, off by default) writes each fill's and
+Generate More's request and results to `Documents/PhotoCraft/generative/<date>/<time>-<provider>/`
+(date and time in UTC): `sent-image.png` and `sent-mask.png` (as handed to the provider, at its
+working size), `sent-reference-<n>`, `request.json` (provider, model, prompt, mode, time),
+`result-<n>` as the provider returned them, and `color-match.txt`. Generative Batch's results are
+files already and aren't kept this way. To debug a provider, start the app with
+`PHOTOCRAFT_GENAI_DUMP=<folder>`: the same files go to a new `fill-<ms>` subfolder there, whatever
+the setting. Nothing is written without one or the other. For tuning, the ignored test `live_fill` in `apps/photocraft/src/genai.rs`
 runs one fill from the command line with the saved key, or replays saved results without a
 request (`PHOTOCRAFT_LIVE_REPLAY`). Gemini returns JPEG (its only output format) and its results carry Google's SynthID watermark.
 
@@ -294,7 +308,9 @@ request (`PHOTOCRAFT_LIVE_REPLAY`). Gemini returns JPEG (its only output format)
 - Keys live in the OS credential store: the macOS Keychain, Windows Credential Manager. On Linux
   and the BSDs a key stays in process memory and is asked for again after a restart; it is never
   written to a file.
-- Preferences hold only the provider id and model (`dialogs["ui.generativeAiSettings"]`).
+- Preferences hold only the provider id and model, each provider's options and whether to keep
+  what is sent and returned (`dialogs["ui.generativeAiSettings"]`); a request kept on disk holds
+  the images and prompt, never the key.
 - The key field is not a dialog field, so `ui.inspect` and the control channel never see it. An
   `ApiKey` never prints (`Debug` is redacted), errors never carry a response body, and a
   service's own error text is passed on only after any copy of the key is scrubbed from it.

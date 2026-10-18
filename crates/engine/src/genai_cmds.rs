@@ -96,6 +96,17 @@ impl Session {
         self.genai.as_ref()
     }
 
+    /// Keep each fill's (and Generate More's) request and results in a new folder under `dir`:
+    /// `<dir>/<date>/<time>-<provider>/`, the date and time in UTC. `None` keeps nothing.
+    pub fn set_generative_keep(&mut self, dir: Option<&str>) {
+        self.genai_state.keep = dir.filter(|d| !d.trim().is_empty()).map(Arc::from);
+    }
+
+    /// Where requests and results are kept ([`Session::set_generative_keep`]), if anywhere.
+    pub fn generative_keep(&self) -> Option<&str> {
+        self.genai_state.keep.as_deref()
+    }
+
     /// The fills started in this session that haven't landed: generating, waiting their turn, or
     /// failed (waiting for Retry or Discard), oldest first.
     pub fn generative_fills(&self) -> Vec<FillInfo> {
@@ -132,6 +143,9 @@ pub(crate) struct GenState {
     /// Turns at each provider (by id), shared by every fill, Generate More and batch sent to it:
     /// a local server's one turn is no reason for a service's fills to wait.
     turns: std::collections::HashMap<&'static str, Arc<queue::Turns>>,
+    /// Where each fill's request and results are kept (Generative AI Settings › Keep what is sent
+    /// and returned), if anywhere.
+    keep: Option<Arc<str>>,
 }
 
 impl GenState {
@@ -222,6 +236,9 @@ struct FillInput {
     canvas: Rect,
     area: Rect,
     size: (u32, u32),
+    /// How far past the selection the mask sent reaches, in pixels at the request size
+    /// ([`ImageProvider::mask_room`]).
+    room: u32,
     mode: EditMode,
     prompt: String,
     name: String,
@@ -419,10 +436,13 @@ fn encode_rgba(px: Vec<u8>, w: u32, h: u32) -> Result<Vec<u8>> {
 /// replaced, as Photoshop's fill doesn't, so it can't paint it back. A flat grey hole was tried
 /// first: Gemini read it as an object (a grey box, a lamp) and drew it in. In [`EditMode::Edit`]
 /// it is sent as it is, since the provider is to change what is there.
-fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mode: EditMode) -> Result<(Vec<u8>, Vec<u8>, Reference)> {
+fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mode: EditMode, room: u32) -> Result<(Vec<u8>, Vec<u8>, Reference)> {
     let r = Rect::from_xywh(0, 0, w, h);
     let rgba = image.convert(PixelFormat::new(ColorMode::Rgb, SampleType::U8, true)).to_interleaved(r);
     let coverage: Vec<f32> = scaled(sel, area, w, h).read_region(r).into_iter().map(|v| v.clamp(0.0, 1.0)).collect();
+    // The mask sent reaches `room` pixels past the selection (the provider may draw there, and the
+    // colour match learns only from what it was to keep); the placeholder stays in the selection.
+    let sent = if room > 0 { photocraft_algo::selection::expand(&coverage, w as usize, h as usize, room as f32) } else { coverage.clone() };
     let mut original = Vec::with_capacity(coverage.len() * 3);
     for px in rgba.as_chunks::<4>().0 {
         let a = f32::from(px[3]) / 255.0;
@@ -443,10 +463,10 @@ fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mo
             cleared.push((v * 255.0).round().clamp(0.0, 255.0) as u8);
         }
         cleared.push(255);
-        let g = (m * 255.0).round() as u8;
+        let g = (sent.get(i).copied().unwrap_or(m) * 255.0).round() as u8;
         mask.extend_from_slice(&[g, g, g, 255]);
     }
-    let reference = Reference { original, coverage, w, h };
+    let reference = Reference { original, coverage: sent, w, h };
     Ok((encode_rgba(cleared, w, h)?, encode_rgba(mask, w, h)?, reference))
 }
 
@@ -981,18 +1001,53 @@ fn place(bytes: &[u8], area: Rect, reference: &Reference) -> Result<(Surface, St
     Ok((placed, stats))
 }
 
-/// Debugging aid: with `PHOTOCRAFT_GENAI_DUMP` set to a folder, each request's image, mask, mode,
-/// reference images, raw results and colour-matching figures are written to a new subfolder of it.
-/// Nothing is written unless the variable is set.
-fn dump(request: &EditRequest, results: &[Vec<u8>], stats: &[String]) {
+/// A new folder for one request's files: with `PHOTOCRAFT_GENAI_DUMP` set (a debugging aid),
+/// `fill-<ms>` in it; else, with Keep what is sent and returned on, `<keep>/<date>/<time>-<provider>`
+/// (UTC; `-2`, `-3`… when two land in the same millisecond). `None` when neither is set or the
+/// folder can't be made.
+#[cfg(not(target_arch = "wasm32"))]
+fn dump_dir(keep: Option<&str>, provider: &str) -> Option<std::path::PathBuf> {
+    let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis());
+    if let Some(root) = std::env::var_os("PHOTOCRAFT_GENAI_DUMP") {
+        let dir = std::path::Path::new(&root).join(format!("fill-{ms}"));
+        return std::fs::create_dir_all(&dir).is_ok().then_some(dir);
+    }
+    // `2026-10-18T15:06:12Z`: the day, and the time without separators.
+    let now = crate::analysis_cmds::now_iso();
+    let (day, time) = now.split_once('T')?;
+    let time: String = time.chars().filter(char::is_ascii_digit).collect();
+    let parent = std::path::Path::new(keep?).join(day);
+    std::fs::create_dir_all(&parent).ok()?;
+    let id: String = provider.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').collect();
+    (1..100).find_map(|n| {
+        let name = if n == 1 { format!("{time}-{:03}-{id}", ms % 1000) } else { format!("{time}-{:03}-{id}-{n}", ms % 1000) };
+        let dir = parent.join(name);
+        std::fs::create_dir(&dir).is_ok().then_some(dir)
+    })
+}
+
+/// Write a request (image, mask, prompt, mode, reference images, which provider and model) and
+/// its raw results, with the colour-matching figures, to a new folder ([`dump_dir`]): for
+/// debugging, and for the user who keeps them. Nothing is written unless one is set; a write
+/// that fails never fails the fill.
+fn dump(keep: Option<&str>, provider: &dyn ImageProvider, request: &EditRequest, results: &[Vec<u8>], stats: &[String]) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let Some(root) = std::env::var_os("PHOTOCRAFT_GENAI_DUMP") else { return };
-        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis());
-        let dir = std::path::Path::new(&root).join(format!("fill-{stamp}"));
-        if std::fs::create_dir_all(&dir).is_err() {
+        if keep.is_none() && std::env::var_os("PHOTOCRAFT_GENAI_DUMP").is_none() {
             return;
         }
+        let info = provider.info();
+        let Some(dir) = dump_dir(keep, info.id) else { return };
+        let about = json!({
+            "time": crate::analysis_cmds::now_iso(),
+            "provider": info.name,
+            "model": info.model,
+            "prompt": request.prompt,
+            "mode": format!("{:?}", request.mode).to_lowercase(),
+            "references": request.references.len(),
+            "results": results.len(),
+        });
+        let _ = std::fs::write(dir.join("request.json"), serde_json::to_string_pretty(&about).unwrap_or_default());
         let _ = std::fs::write(dir.join("sent-image.png"), &request.image);
         let _ = std::fs::write(dir.join("sent-mask.png"), &request.mask);
         let _ = std::fs::write(dir.join("prompt.txt"), &request.prompt);
@@ -1008,14 +1063,21 @@ fn dump(request: &EditRequest, results: &[Vec<u8>], stats: &[String]) {
         let _ = std::fs::write(dir.join("color-match.txt"), stats.iter().enumerate().map(|(i, s)| format!("result {}: {s}\n", i + 1)).collect::<String>());
     }
     #[cfg(target_arch = "wasm32")]
-    let _ = (request, results, stats);
+    let _ = (keep, provider, request, results, stats);
 }
 
-/// Place every result, then (when asked) dump the request and results for debugging.
-fn place_all(request: &EditRequest, results: &[Vec<u8>], area: Rect, reference: &Reference) -> Result<Vec<Surface>> {
+/// Place every result, then (when asked) keep the request and results ([`dump`]).
+fn place_all(
+    request: &EditRequest,
+    results: &[Vec<u8>],
+    area: Rect,
+    reference: &Reference,
+    keep: Option<&str>,
+    provider: &dyn ImageProvider,
+) -> Result<Vec<Surface>> {
     let placed = results.iter().map(|b| place(b, area, reference)).collect::<Result<Vec<_>>>()?;
     let stats: Vec<String> = placed.iter().map(|(_, s)| s.clone()).collect();
-    dump(request, results, &stats);
+    dump(keep, provider, request, results, &stats);
     Ok(placed.into_iter().map(|(p, _)| p).collect())
 }
 
@@ -1071,14 +1133,18 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
     let (w, h) = provider.request_size(w, h);
     let (w, h) = (w.clamp(1, UPLOAD_SIDE), h.clamp(1, UPLOAD_SIDE));
     let (doc_id, anchor) = (doc.id, st.active_layer);
+    let bounds = sel.content_bounds().intersect(&canvas);
+    // The provider's room past the selection, in pixels at the request size.
+    let room = f64::from(provider.mask_room().clamp(0.0, 1.0)) * f64::from(bounds.width().max(bounds.height())) * f64::from(w) / f64::from(area.width().max(1));
     let input = FillInput {
         name: layer_name(&prompt),
-        bounds: sel.content_bounds().intersect(&canvas),
+        bounds,
         doc,
         sel,
         canvas,
         area,
         size: (w, h),
+        room: (room.round() as u32).min(UPLOAD_SIDE),
         mode,
         prompt,
         references,
@@ -1099,6 +1165,7 @@ fn start(s: &mut Session, id: u64) -> Result<Value> {
     let (doc, input, status) = (fill.doc, Arc::clone(&fill.input), Arc::clone(&fill.status));
     let provider = provider_for(s, &fill.made).map_err(bad)?;
     let turns = s.genai_state.turns(provider.as_ref());
+    let keep = s.genai_state.keep.clone();
     status.set_error(None);
     let spawning = s.spawning();
     let worker = Arc::clone(&status);
@@ -1107,7 +1174,7 @@ fn start(s: &mut Session, id: u64) -> Result<Value> {
         LABEL,
         doc,
         move |ctx| {
-            let r = fill_work(ctx, &input, provider.as_ref(), &turns, &worker);
+            let r = fill_work(ctx, &input, provider.as_ref(), &turns, &worker, keep.as_deref());
             if let Err(e) = &r
                 && !matches!(e, EngineError::Cancelled)
             {
@@ -1141,11 +1208,18 @@ fn start(s: &mut Session, id: u64) -> Result<Value> {
 }
 
 /// A fill's network part: what is sent, a turn at the provider, the results placed.
-fn fill_work(ctx: &JobCtx, input: &FillInput, provider: &dyn ImageProvider, turns: &queue::Turns, status: &FillStatus) -> Result<(Vec<Surface>, Source)> {
+fn fill_work(
+    ctx: &JobCtx,
+    input: &FillInput,
+    provider: &dyn ImageProvider,
+    turns: &queue::Turns,
+    status: &FillStatus,
+    keep: Option<&str>,
+) -> Result<(Vec<Surface>, Source)> {
     let (w, h) = input.size;
     ctx.progress(0.05, "Preparing image");
     let (image, mask, reference) =
-        request_images(&scaled(&srgb_composite(&input.doc, input.area)?, input.area, w, h), &input.sel, input.area, w, h, input.mode)?;
+        request_images(&scaled(&srgb_composite(&input.doc, input.area)?, input.area, w, h), &input.sel, input.area, w, h, input.mode, input.room)?;
     ctx.check()?;
     if !input.references.is_empty() {
         ctx.progress(0.1, "Preparing reference images");
@@ -1157,7 +1231,7 @@ fn fill_work(ctx: &JobCtx, input: &FillInput, provider: &dyn ImageProvider, turn
     status.set_reported(None);
     let results = request_all(ctx, provider, &request, input.count, Some(status))?;
     ctx.progress(0.9, "Placing the results");
-    let placed = place_all(&request, &results, input.area, &reference)?;
+    let placed = place_all(&request, &results, input.area, &reference, keep, provider)?;
     Ok((placed, Source { prompt: request.prompt.clone(), area: input.area, request, reference, made: MadeWith::of(provider) }))
 }
 
@@ -1325,6 +1399,7 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
     let count = variations_param(p, "count", provider.as_ref()).map_err(|_| bad(format!("`count` must be a whole number from 1 to {MAX_VARIATIONS}")))?;
     let doc = s.active().map(|st| st.doc.id).ok_or(EngineError::NoDocument)?;
     let turns = s.genai_state.turns(provider.as_ref());
+    let keep = s.genai_state.keep.clone();
     // Like a fill, it doesn't lock the document: its variations join the group when they come.
     crate::jobs::run_on(
         s,
@@ -1334,7 +1409,7 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
             let _turn = turns.take(ctx, &AtomicUsize::new(0), provider.max_parallel())?;
             let results = request_all(ctx, provider.as_ref(), &source.request, count, None)?;
             ctx.progress(0.9, "Placing the results");
-            place_all(&source.request, &results, source.area, &source.reference)
+            place_all(&source.request, &results, source.area, &source.reference, keep.as_deref(), provider.as_ref())
         },
         move |s, placed| {
             let ids = s.edit("Generate More", |doc, _| {

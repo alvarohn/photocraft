@@ -327,6 +327,14 @@ pub trait ImageProvider: Send + Sync {
     fn mask_format(&self) -> MaskFormat {
         MaskFormat::Luma
     }
+    /// How far past the selection the mask sent reaches, as a share of the selection's longer
+    /// side (0, the default: the selection only). A local server puts everything outside the mask
+    /// back as it was at every step, so what it draws is cut at the mask's edge; with room, what
+    /// runs past the selection is in the variation, hidden by the group's mask until that is
+    /// painted to show it.
+    fn mask_room(&self) -> f32 {
+        0.0
+    }
     /// Most requests sent to it at once (a local server works one at a time); `None`: as many as
     /// the engine allows.
     fn max_parallel(&self) -> Option<usize> {

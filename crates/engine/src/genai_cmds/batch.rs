@@ -370,7 +370,7 @@ fn request_for(provider: &dyn ImageProvider, doc: &Document, canvas: Rect, promp
     let mut all = Surface::new(PixelFormat::GRAY8);
     all.fill_rect(canvas, &[1.0]);
     let composite = super::scaled(&super::srgb_composite(doc, canvas)?, canvas, w, h);
-    let (image, mask, _) = super::request_images(&composite, &all, canvas, w, h, EditMode::Edit)?;
+    let (image, mask, _) = super::request_images(&composite, &all, canvas, w, h, EditMode::Edit, 0)?;
     Ok(EditRequest { image, mask, prompt: prompt.to_owned(), size: ImageSize::for_long_side(w.max(h)), mode: EditMode::Edit, references: references.to_vec() })
 }
 

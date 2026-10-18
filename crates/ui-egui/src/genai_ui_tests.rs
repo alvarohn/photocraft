@@ -1062,3 +1062,28 @@ fn the_provider_pickers_render() {
         img.save(std::path::Path::new(dir).join("genai-batch-pickers.png")).unwrap();
     }
 }
+
+/// Keep what is sent and returned: off by default; on, the session keeps each fill's request and
+/// results under Documents/PhotoCraft/generative, through launches and provider switches.
+#[test]
+fn keeping_what_is_sent_is_off_until_ticked_in_the_settings() {
+    let store = Store::default();
+    let mut app = two_providers(&store);
+    assert!(app.session.generative_keep().is_none());
+    let id = open_settings(&mut app);
+    assert_eq!(fields(&app, id)["keep"], false);
+    app.ui.dialog_mut(id).unwrap().fields.insert("keep".into(), json!(true));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    let kept = std::path::PathBuf::from(app.session.generative_keep().expect("on"));
+    assert!(kept.ends_with(std::path::Path::new("Documents").join("PhotoCraft").join("generative")), "{kept:?}");
+    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+    assert!(app.session.generative_keep().is_some(), "a provider switch keeps it");
+    let mut next = PhotocraftApp::new(Session::new(), Services { genai: Some(services(&store)), ..Default::default() });
+    next.session.prefs.edit(|p| p.dialogs = app.session.prefs().dialogs.clone());
+    restore(&mut next).unwrap();
+    assert!(next.session.generative_keep().is_some(), "and so does a launch");
+    let id = open_settings(&mut app);
+    app.ui.dialog_mut(id).unwrap().fields.insert("keep".into(), json!(false));
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    assert!(app.session.generative_keep().is_none());
+}

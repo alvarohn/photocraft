@@ -72,6 +72,9 @@ pub struct Options {
     pub work_side: u32,
     /// For `other`: the model edits from instructions and takes reference images.
     pub instructions: bool,
+    /// How far past the selection the model may draw, as a share of the selection's longer side
+    /// (0 to 1; 0: only inside it). See [`ImageProvider::mask_room`].
+    pub room: f32,
 }
 
 impl Options {
@@ -86,6 +89,7 @@ impl Options {
             strength: 1.0,
             work_side: DEFAULT_SIDE,
             instructions: false,
+            room: 0.0,
         };
         match preset {
             "qwen-image-2.1-turbo" => Options { preset: preset.into(), sampler: "euler".into(), ..base },
@@ -95,7 +99,7 @@ impl Options {
     }
 
     /// Read from the settings' JSON (`{"url", "preset", "steps", "cfg", "sampler", "strength",
-    /// "workSide", "instructions"}`); missing or out-of-range values take the preset's.
+    /// "workSide", "instructions", "room"}`); missing or out-of-range values take the preset's.
     pub fn from_json(v: &Value) -> Options {
         let preset = v.get("preset").and_then(Value::as_str).filter(|p| PRESETS.iter().any(|(id, _)| id == p)).unwrap_or(DEFAULT_PRESET);
         let d = Options::preset(preset);
@@ -120,6 +124,7 @@ impl Options {
             strength: v.get("strength").and_then(Value::as_f64).filter(|s| s.is_finite()).map_or(d.strength, |s| s.clamp(0.05, 1.0) as f32),
             work_side: side,
             instructions: v.get("instructions").and_then(Value::as_bool).unwrap_or(d.instructions),
+            room: v.get("room").and_then(Value::as_f64).filter(|r| r.is_finite()).map_or(d.room, |r| r.clamp(0.0, 1.0) as f32),
         }
     }
 
@@ -396,6 +401,10 @@ impl<T: HttpTransport> ImageProvider for SdCppProvider<T> {
         Some(1)
     }
 
+    fn mask_room(&self) -> f32 {
+        self.options.room
+    }
+
     fn edit(&self, r: &EditRequest) -> Result<GeneratedImage> {
         self.edit_with_progress(r, &NoProgress)
     }
@@ -663,6 +672,10 @@ mod tests {
         assert_eq!(Options::from_json(&json!({"preset": "nope"})).preset, DEFAULT_PRESET);
         assert_eq!(Options::from_json(&json!({"preset": "other", "cfg": null})).cfg, None);
         assert!(Options::from_json(&json!({"preset": "other", "instructions": true})).edits());
+        let room = |v: Value| Options::from_json(&json!({"room": v})).room;
+        assert_eq!((room(json!(0.25)), room(json!(7)), room(json!(-1)), room(json!("x")), room(Value::Null)), (0.25, 1.0, 0.0, 0.0, 0.0));
+        assert_eq!(SdCppProvider::new(Options { room: 0.5, ..Options::preset("z-image-turbo") }, Fake::new(Vec::new())).unwrap().mask_room(), 0.5);
+        assert_eq!(provider("z-image-turbo", Vec::new()).mask_room(), 0.0, "none by default");
         for bad in ["ftp://x", "http://", "http://user:pw@host", "http://h/?q=1", "http://h/#f", "javascript:alert(1)", "http://h h"] {
             assert!(check_url(bad).is_err(), "{bad}");
         }

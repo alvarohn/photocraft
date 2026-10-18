@@ -76,9 +76,28 @@ fn saved(app: &PhotocraftApp) -> (String, String) {
     (get("provider"), get("model"))
 }
 
+/// Is Keep what is sent and returned on?
+fn keeps(app: &PhotocraftApp) -> bool {
+    app.session.prefs().dialogs.get(PREF).and_then(|v| v.get("keep")).and_then(Value::as_bool) == Some(true)
+}
+
+/// Where Keep what is sent and returned writes: `Documents/PhotoCraft/generative` in the user's
+/// home folder (none on the web).
+fn keep_dir() -> Option<std::path::PathBuf> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).filter(|h| !h.is_empty())?;
+        Some(std::path::Path::new(&home).join("Documents").join("PhotoCraft").join("generative"))
+    }
+    #[cfg(target_arch = "wasm32")]
+    None
+}
+
 /// Build the saved provider and install it on the session (at launch and after Settings). Reads
 /// the credential store only when a provider is configured; never touches the network.
 pub fn restore(app: &mut PhotocraftApp) -> Result<(), String> {
+    let keep = keeps(app).then(keep_dir).flatten().map(|d| d.to_string_lossy().into_owned());
+    app.session.set_generative_keep(keep.as_deref());
     let (provider, model) = saved(app);
     if provider.is_empty() {
         app.session.set_image_provider(None);
@@ -173,6 +192,7 @@ pub fn open_settings(app: &mut PhotocraftApp) -> u64 {
     f.insert(SETTINGS_MARK.into(), json!(true));
     f.insert("__label".into(), json!("Generative AI Settings"));
     providers::load_fields(app, &mut f, &provider);
+    f.insert("keep".into(), json!(keeps(app)));
     app.genai.key_provider = provider;
     app.ui.open_dialog(DialogKind::Command, f)
 }
@@ -653,6 +673,20 @@ fn settings_body(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<String,
         providers::rows(app, ui, f, &provider);
     });
     providers::notes(app, ui, f, &provider);
+    if let Some(dir) = keep_dir().filter(|_| !provider.is_empty()) {
+        ui.add_space(6.0);
+        let mut keep = f.get("keep").and_then(Value::as_bool) == Some(true);
+        if crate::widgets::checkbox(ui, &mut keep, tl!("Keep what is sent and returned")).changed() {
+            f.insert("keep".into(), json!(keep));
+        }
+        faint(
+            ui,
+            &crate::i18n::fmt(
+                tl!("Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose."),
+                &[("dir", &dir.to_string_lossy())],
+            ),
+        );
+    }
 }
 
 /// OK: remember the choice, save a newly typed key, and install the provider (or remove it).
@@ -731,7 +765,10 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
             (services.save_key)(&provider, key.expose())?;
         }
     }
-    let remembered = providers::remembered(app, &provider, &model, &options);
+    let mut remembered = providers::remembered(app, &provider, &model, &options);
+    if let Some(o) = remembered.as_object_mut() {
+        o.insert("keep".into(), json!(f.get("keep").and_then(Value::as_bool) == Some(true)));
+    }
     app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), remembered));
     restore(app)?;
     app.genai.configured = set_up_providers(app);

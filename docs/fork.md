@@ -46,6 +46,11 @@ repository doesn't have, so merging it stays easy.
   the server's address and the finer options. Each window says there what the model won't do of
   what it asks (Edit, reference images, a batch). Each provider has its own turns, and Retry and
   Generate More go only to the provider and model a fill was made with.
+- **Keep what is sent and returned, and room past the selection**, the fork's own too (2026-10-18,
+  after the first run of the local server): Generative AI Settings can keep each fill's request
+  and results in `Documents/PhotoCraft/generative/<date>/` (off by default; the
+  `PHOTOCRAFT_GENAI_DUMP` debugging aid made a setting); the local server's settings take a room
+  past the selection (0% by default) for the model to draw past it, hidden by the group's mask.
 - **Generative Batch** (File › Automate › Generative Batch…), the fork's own too (2026-10-18): the
   same edit for the open documents or a folder's images, results as JPEGs in an `IA` folder
   beside each image, *Same look in all* (the first result guides the others), stopping after two
@@ -102,8 +107,8 @@ undone:
   (`--backend`, `--max-vram`) and other flags stay in sd-server's command line (the splits that
   ran Z-Image Turbo and Qwen Image 2.1 Turbo on a 2 GB GTX 1050 are in `generative-ai.md`). A server already
   generating can't be stopped from PhotoCraft (the server refuses; its next job waits).
-- **Fill strength on local models** was chosen from the server's code, not from measured results
-  (default 100%); tune it on the owner's machine.
+- **Fill strength and room past the selection on local models** were chosen from the server's
+  code, not from measured results (defaults 100% and 0%); tune them on the owner's machine.
 - **Generative Batch** writes JPEG files only (no PNG, no "as layers in the open documents"), at
   each image's size; retrying is opening the dialog again (only the failed files are ticked), not
   a per-image Retry button; a batch is not listed in the fills' status-bar list (it shows as a
