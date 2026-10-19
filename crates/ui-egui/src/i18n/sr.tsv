@@ -4351,3 +4351,52 @@ shape	Appearance	Izgled
 @plural	{n} waiting|{n} waiting	{n} čeka|{n} čekaju|{n} čeka
 @plural	{n} failed|{n} failed	{n} neuspešna|{n} neuspešne|{n} neuspešnih
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Popuni posebno svaku od {n} odvojenih oblasti|Popuni posebno svaku od {n} odvojenih oblasti|Popuni posebno svaku od {n} odvojenih oblasti
+	Sends the same area and prompt to {name} again for {n} more.	Ponovo šalje istu oblast i opis ka {name} za još {n}.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Svaka Generativna popuna šalje po jedan zahtev za svaku varijaciju (od 1 do 4, bira se u njenom dijalogu), a svaki se naplaćuje na vaš ključ.
+	How many versions to generate. Each one is a request of its own.	Koliko verzija napraviti. Svaka je poseban zahtev.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Oko US${cost} po varijaciji veličine {w}×{h} (prema cenama koje objavljuje OpenAI; naplaćuju se i poslate slike).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Ukupno oko US${cost} ({n} × US${each}, prema cenama koje objavljuje dobavljač).
+	Default (low)	Podrazumevano (nisko)
+	Get an OpenAI API key	Nabavite OpenAI API ključ
+	Input fidelity	Vernost ulaznim slikama
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI ne objavljuje cenu za ovaj kvalitet; pogledajte OpenAI stranicu sa cenama.
+	Paste your OpenAI API key	Nalepite svoj OpenAI API ključ
+	Quality (compression)	Kvalitet (kompresija)
+	Very high	Veoma visoko
+	Working resolution	Radna rezolucija
+	4K (experimental)	4K (eksperimentalno)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Ništa se ne šalje dok ne pokrenete Generativnu popunu. Svaki put kada to uradite, PhotoCraft šalje OpenAI-ju (api.openai.com) izabranu oblast i sliku oko nje, masku selekcije i vaš opis, uz vaš API ključ. Važe uslovi korišćenja i politika privatnosti OpenAI API-ja, a korišćenje se naplaćuje na vaš ključ.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (najvernije izmene)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (brži)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (najjeftiniji)
+	Generative Batch…	Generativna grupna obrada…
+	Generative Batch	Generativna grupna obrada
+	Start Batch	Pokreni obradu
+	{on} of {n} ticked	Označeno: {on} od {n}
+	Images	Slike
+	Open documents	Otvoreni dokumenti
+	A folder	Fascikla
+	No folder chosen	Nije izabrana fascikla
+	Choose Folder…	Izaberi fasciklu…
+	What to change in each image	Šta promeniti na svakoj slici
+	Each image is edited whole, as Edit selection does with all of it selected.	Svaka slika se uređuje cela, kao što to radi „Uredi selekciju“ kada je selektovana cela slika.
+	Same look in all	Isti stil za sve
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Prva slika se uređuje prva; njen rezultat ide ostalima kao njihova poslednja referentna slika, a njihovom opisu se dodaje ovo:
+	Results	Rezultati
+	JPEG files in an {folder} folder beside each image	JPEG datoteke u fascikli „{folder}“ pored svake slike
+	Beside each image	Pored svake slike
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Svaka slika se šalje ka {name} ({model}) jednom po varijaciji, zajedno sa referentnim slikama.
+	Say what to change in each image.	Navedite šta treba promeniti na svakoj slici.
+	Generative Batch wrote {n} files to {folder}.	Generativna grupna obrada je upisala datoteke ({n}) u {folder}.
+	{n} folders	fascikle ({n})
+	{n} failed ({error}).	Neuspešno: {n} ({error}).
+	Stopped: {why}	Zaustavljeno: {why}
+	Generative Batch failed: {error}	Generativna grupna obrada nije uspela: {error}
+	Generative Batch cancelled; the files already written are kept.	Generativna grupna obrada je otkazana; već upisane datoteke su zadržane.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Podešavanja generativne AI mogu da se promene samo u samom PhotoCraftu, ne putem automatizacije.
+	{model} doesn't take reference images: they aren't sent.	{model} ne prima referentne slike: one se ne šalju.
+	{model} takes {max} reference images here: the first {max} are sent.	Ograničenje referentnih slika za {model} ovde je {max}: šalju se samo slike do granice od {max}.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} ne uređuje ono što je u selekciji, već popunjava selekciju prema opisu.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} ne uređuje slike prema uputstvima, a to je potrebno za Generativnu grupnu obradu: izaberite model koji to ume, na primer Gemini, OpenAI ili Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Čuvaj poslato i primljeno
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Slika, maska, referentne slike, opis i rezultati svake popune čuvaju se u {dir}, u posebnoj fascikli za svaki dan (UTC), radi poređenja i dijagnostike.

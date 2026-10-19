@@ -3979,17 +3979,17 @@ curves	Smooth	Vloeiend maken
 	Generative Fill…	Generatief vullen…
 	Get a Gemini API key from Google AI Studio	Een Gemini-API-sleutel halen bij Google AI Studio
 	No API key is saved for {provider}.	Er is geen API-sleutel bewaard voor {provider}.
-	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	Er wordt niets verstuurd totdat u Generatief vullen uitvoert. Elke keer dat u dat doet, stuurt PhotoCraft het geselecteerde gebied met de omringende afbeelding, een zwart-wit masker van de selectie en uw beschrijving met uw API-sleutel naar Google (generativelanguage.googleapis.com). De voorwaarden en het privacybeleid van de Gemini API van Google zijn van toepassing en het gebruik wordt via uw sleutel gefactureerd. Resultaten dragen het SynthID-watermerk van Google.
-	Off. Set up a provider with your own API key to use Generative Fill.	Uit. Stel een aanbieder in met uw eigen API-sleutel om Generatief vullen te gebruiken.
-	Paste your Gemini API key	Plak uw Gemini-API-sleutel
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark.	Er wordt niets verstuurd totdat je Generatief vullen uitvoert. Elke keer dat je dat doet, stuurt PhotoCraft het geselecteerde gebied met de omringende afbeelding, een zwart-wit masker van de selectie en je beschrijving met je API-sleutel naar Google (generativelanguage.googleapis.com). De voorwaarden en het privacybeleid van de Gemini API van Google zijn van toepassing en het gebruik wordt via je sleutel gefactureerd. Resultaten dragen het SynthID-watermerk van Google.
+	Off. Set up a provider with your own API key to use Generative Fill.	Uit. Stel een aanbieder in met je eigen API-sleutel om Generatief vullen te gebruiken.
+	Paste your Gemini API key	Plak je Gemini-API-sleutel
 	Prompt (optional)	Beschrijving (optioneel)
 	Provider	Aanbieder
 	Remove Key	Sleutel verwijderen
 	Saved (paste to replace)	Bewaard (plak om te vervangen)
-	Set up Generative Fill with your own API key	Generatief vullen instellen met uw eigen API-sleutel
+	Set up Generative Fill with your own API key	Generatief vullen instellen met je eigen API-sleutel
 	The selected area, the image around it and the prompt are sent to {name} ({model}).	Het geselecteerde gebied, de omringende afbeelding en de beschrijving worden naar {name} ({model}) gestuurd.
 	What is sent, and to whom	Wat er wordt verstuurd, en naar wie
-	Your key is kept in {store}, never in PhotoCraft's settings files.	Uw sleutel wordt bewaard in {store}, nooit in de instellingenbestanden van PhotoCraft.
+	Your key is kept in {store}, never in PhotoCraft's settings files.	Je sleutel wordt bewaard in {store}, nooit in de instellingenbestanden van PhotoCraft.
 	the macOS Keychain	de macOS-sleutelhanger
 	Windows Credential Manager	Windows Referentiebeheer
 	memory until PhotoCraft quits	het geheugen totdat PhotoCraft stopt
@@ -3998,15 +3998,15 @@ curves	Smooth	Vloeiend maken
 	No prompt: continues the image	Geen beschrijving: zet de afbeelding voort
 	Sends the same area and prompt to {name} again for three more.	Stuurt hetzelfde gebied en dezelfde beschrijving opnieuw naar {name} voor nog drie.
 	Generate More	Meer genereren
-	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Elk Generatief vullen maakt drie variaties en stuurt dus drie verzoeken, die elk op uw sleutel worden gefactureerd.
+	Each Generative Fill makes three variations, so it sends three requests, each billed to your key.	Elk Generatief vullen maakt drie variaties en stuurt dus drie verzoeken, die elk op je sleutel worden gefactureerd.
 	{name} was changed by another app after it was opened or saved here.	{name} is door een andere app gewijzigd nadat het hier is geopend of bewaard.
 	Replace it with this document, or cancel and use File › Save As to keep both.	Vervang het door dit document, of annuleer en gebruik Bestand › Opslaan als om beide te houden.
 # Generative Fill: Edit mode and reference images
 	Fill selection	Selectie vullen
 	Edit selection	Selectie bewerken
 	Generate new content in the selection, or remove what is there	Nieuwe inhoud in de selectie genereren of verwijderen wat er staat
-	Keep what is in the selection and change only what you ask for	Behouden wat in de selectie staat en alleen veranderen wat u vraagt
-	Describe what to change in the selection: what is there is kept, except what you ask to change (a colour, a text, a material).	Beschrijf wat er in de selectie moet veranderen: wat er staat blijft behouden, behalve wat u laat veranderen (een kleur, een tekst, een materiaal).
+	Keep what is in the selection and change only what you ask for	Behouden wat in de selectie staat en alleen veranderen wat je vraagt
+	Describe what to change in the selection: what is there is kept, except what you ask to change (a colour, a text, a material).	Beschrijf wat er in de selectie moet veranderen: wat er staat blijft behouden, behalve wat je laat veranderen (een kleur, een tekst, een materiaal).
 	What to change	Wat moet veranderen
 	Empty: removes what is selected and continues the image through it.	Leeg: verwijdert wat geselecteerd is en zet de afbeelding erdoorheen voort.
 	Empty: places what the reference images show in the selection.	Leeg: plaatst wat de referentieafbeeldingen tonen in de selectie.
@@ -4038,3 +4038,52 @@ curves	Smooth	Vloeiend maken
 @plural	{n} waiting|{n} waiting	{n} wachtend|{n} wachtend
 @plural	{n} failed|{n} failed	{n} mislukt|{n} mislukt
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Elk van de {n} losse gebieden apart vullen|Elk van de {n} losse gebieden apart vullen
+	Sends the same area and prompt to {name} again for {n} more.	Stuurt hetzelfde gebied en dezelfde beschrijving opnieuw naar {name} voor nog {n}.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Elk Generatief vullen stuurt één verzoek per variatie (1 tot 4, te kiezen in het dialoogvenster), elk op je sleutel gefactureerd.
+	How many versions to generate. Each one is a request of its own.	Hoeveel versies er worden gegenereerd. Elke versie is een apart verzoek.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Ongeveer US${cost} per variatie bij {w}×{h} (door OpenAI gepubliceerde prijzen; de verstuurde afbeeldingen worden ook gefactureerd).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Ongeveer US${cost} in totaal ({n} × US${each}, door de aanbieder gepubliceerde prijzen).
+	Default (low)	Standaard (laag)
+	Get an OpenAI API key	Een OpenAI-API-sleutel halen
+	Input fidelity	Invoergetrouwheid
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI publiceert geen prijs voor deze kwaliteit; zie de prijzenpagina van OpenAI.
+	Paste your OpenAI API key	Plak je OpenAI-API-sleutel
+	Quality (compression)	Kwaliteit (compressie)
+	Very high	Zeer hoog
+	Working resolution	Werkresolutie
+	4K (experimental)	4K (experimenteel)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Er wordt niets verstuurd totdat je Generatief vullen uitvoert. Elke keer dat je dat doet, stuurt PhotoCraft het geselecteerde gebied met de omringende afbeelding, een masker van de selectie en je beschrijving met je API-sleutel naar OpenAI (api.openai.com). De API-voorwaarden en het privacybeleid van OpenAI zijn van toepassing en het gebruik wordt via je sleutel gefactureerd.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (meest getrouwe bewerkingen)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (sneller)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (goedkoopst)
+	Generative Batch…	Generatieve batch…
+	Generative Batch	Generatieve batch
+	Start Batch	Batch starten
+	{on} of {n} ticked	{on} van {n} aangevinkt
+	Images	Afbeeldingen
+	Open documents	Geopende documenten
+	A folder	Een map
+	No folder chosen	Geen map gekozen
+	Choose Folder…	Map kiezen…
+	What to change in each image	Wat er in elke afbeelding moet veranderen
+	Each image is edited whole, as Edit selection does with all of it selected.	Elke afbeelding wordt in haar geheel bewerkt, zoals Selectie bewerken doet als alles geselecteerd is.
+	Same look in all	Dezelfde stijl voor alle afbeeldingen
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	De eerste afbeelding wordt eerst bewerkt; het resultaat gaat naar de andere als hun laatste referentieafbeelding, met dit toegevoegd aan hun beschrijving:
+	Results	Resultaten
+	JPEG files in an {folder} folder beside each image	JPEG-bestanden in een map {folder} naast elke afbeelding
+	Beside each image	Naast elke afbeelding
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Elke afbeelding wordt één keer per variatie met de referentieafbeeldingen naar {name} ({model}) gestuurd.
+	Say what to change in each image.	Geef aan wat er in elke afbeelding moet veranderen.
+	Generative Batch wrote {n} files to {folder}.	Generatieve batch heeft {n} bestanden in {folder} geschreven.
+	{n} folders	{n} mappen
+	{n} failed ({error}).	{n} mislukt ({error}).
+	Stopped: {why}	Gestopt: {why}
+	Generative Batch failed: {error}	Generatieve batch mislukt: {error}
+	Generative Batch cancelled; the files already written are kept.	Generatieve batch geannuleerd; de al geschreven bestanden blijven bewaard.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Instellingen voor generatieve AI kunnen alleen in PhotoCraft zelf worden gewijzigd, niet via automatisering.
+	{model} doesn't take reference images: they aren't sent.	{model} accepteert geen referentieafbeeldingen: ze worden niet verstuurd.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} accepteert hier {max} referentieafbeeldingen: de eerste {max} worden verstuurd.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} bewerkt niet wat in de selectie staat: het vult de selectie op basis van de beschrijving.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} bewerkt geen afbeeldingen op basis van instructies, wat Generatieve batch nodig heeft: kies een model dat dat wel doet, zoals Gemini, OpenAI of Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Bewaren wat wordt verstuurd en ontvangen
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	De afbeelding, het masker, de referentieafbeeldingen, de beschrijving en de resultaten van elke vulling worden in {dir} bewaard, in een map per dag (UTC), om te vergelijken en problemen op te sporen.

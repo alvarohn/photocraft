@@ -3459,3 +3459,52 @@ curves	Smooth	매끄럽게
 @plural	{n} waiting|{n} waiting	{n}개 대기 중
 @plural	{n} failed|{n} failed	{n}개 실패
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	떨어진 영역 {n}개를 각각 따로 채우기
+	Sends the same area and prompt to {name} again for {n} more.	같은 영역과 설명을 {name}에 다시 보내 {n}개를 더 만듭니다.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	생성형 채우기는 변형마다 요청을 한 번씩 보내며(대화 상자에서 1~4개 선택), 각 요청은 사용자의 키로 청구됩니다.
+	How many versions to generate. Each one is a request of its own.	생성할 버전 수입니다. 버전마다 별도의 요청이 됩니다.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	{w}×{h}에서 변형 하나당 약 US${cost}(OpenAI 공개 가격 기준, 전송하는 이미지도 청구됨).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	총 약 US${cost}({n} × US${each}, 제공업체 공개 가격 기준).
+	Default (low)	기본값(낮음)
+	Get an OpenAI API key	OpenAI API 키 받기
+	Input fidelity	입력 충실도
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI는 이 품질의 가격을 공개하지 않습니다. 가격 페이지를 확인하세요.
+	Paste your OpenAI API key	OpenAI API 키 붙여넣기
+	Quality (compression)	품질(압축)
+	Very high	매우 높음
+	Working resolution	작업 해상도
+	4K (experimental)	4K(실험적)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	생성형 채우기를 실행하기 전에는 아무것도 전송되지 않습니다. 실행할 때마다 PhotoCraft는 선택 영역과 그 주변 이미지, 선택 영역의 마스크, 입력한 설명을 API 키와 함께 OpenAI(api.openai.com)로 보냅니다. OpenAI API의 이용 약관과 개인정보처리방침이 적용되며, 사용 요금은 사용자의 키로 청구됩니다.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst(가장 충실한 편집)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare(더 빠름)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini(가장 저렴함)
+	Generative Batch…	생성형 일괄 처리…
+	Generative Batch	생성형 일괄 처리
+	Start Batch	일괄 처리 시작
+	{on} of {n} ticked	{n}개 중 {on}개 선택됨
+	Images	이미지
+	Open documents	열린 문서
+	A folder	폴더
+	No folder chosen	선택한 폴더 없음
+	Choose Folder…	폴더 선택…
+	What to change in each image	각 이미지에서 변경할 내용
+	Each image is edited whole, as Edit selection does with all of it selected.	각 이미지는 전체가 편집됩니다. 이미지 전체를 선택하고 선택 영역 편집을 사용한 것과 같습니다.
+	Same look in all	모든 이미지에 같은 스타일 적용
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	첫 번째 이미지를 먼저 편집하고, 그 결과를 나머지 이미지의 마지막 참조 이미지로 보냅니다. 이때 설명에 다음 내용이 추가됩니다:
+	Results	결과
+	JPEG files in an {folder} folder beside each image	각 이미지와 같은 위치에 있는 {folder} 폴더의 JPEG 파일
+	Beside each image	각 이미지와 같은 위치
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	각 이미지는 참조 이미지와 함께 변형마다 한 번씩 {name}({model})(으)로 전송됩니다.
+	Say what to change in each image.	각 이미지에서 변경할 내용을 입력하세요.
+	Generative Batch wrote {n} files to {folder}.	생성형 일괄 처리에서 {folder}에 파일 {n}개를 저장했습니다.
+	{n} folders	폴더 {n}개
+	{n} failed ({error}).	{n}개 실패({error}).
+	Stopped: {why}	중지됨: {why}
+	Generative Batch failed: {error}	생성형 일괄 처리 실패: {error}
+	Generative Batch cancelled; the files already written are kept.	생성형 일괄 처리를 취소했습니다. 이미 저장된 파일은 유지됩니다.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	생성형 AI 설정은 자동화로는 변경할 수 없으며 PhotoCraft에서 직접 변경해야 합니다.
+	{model} doesn't take reference images: they aren't sent.	{model}은(는) 참조 이미지를 지원하지 않으므로 참조 이미지가 전송되지 않습니다.
+	{model} takes {max} reference images here: the first {max} are sent.	여기서 {model}은(는) 참조 이미지를 {max}개까지 받습니다. 처음 {max}개가 전송됩니다.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model}은(는) 선택 영역의 내용을 편집하지 않고, 설명을 바탕으로 선택 영역을 채웁니다.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model}은(는) 지시에 따른 이미지 편집을 지원하지 않지만 생성형 일괄 처리에는 이 기능이 필요합니다. Gemini, OpenAI, Qwen Image 2.1 Turbo처럼 지원하는 모델을 선택하세요.
+	Keep what is sent and returned	전송한 내용과 받은 결과 보관
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	각 채우기의 이미지, 마스크, 참조 이미지, 설명, 결과가 비교와 진단을 위해 {dir}에 날짜별 폴더(UTC)로 저장됩니다.

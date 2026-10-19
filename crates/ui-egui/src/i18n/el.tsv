@@ -3978,3 +3978,52 @@ curves	Smooth	Εξομάλυνση
 @plural	{n} waiting|{n} waiting	{n} σε αναμονή|{n} σε αναμονή
 @plural	{n} failed|{n} failed	{n} απέτυχε|{n} απέτυχαν
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Γέμισμα καθεμίας από τις {n} ξεχωριστές περιοχές χωριστά|Γέμισμα καθεμίας από τις {n} ξεχωριστές περιοχές χωριστά
+	Sends the same area and prompt to {name} again for {n} more.	Στέλνει ξανά την ίδια περιοχή και περιγραφή στο {name} για {n} ακόμη.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Κάθε παραγωγικό γέμισμα στέλνει ένα αίτημα ανά παραλλαγή (1 έως 4, επιλέγεται στο παράθυρο διαλόγου του), και το καθένα χρεώνεται στο κλειδί σας.
+	How many versions to generate. Each one is a request of its own.	Πόσες εκδοχές θα δημιουργηθούν. Η καθεμία είναι ξεχωριστό αίτημα.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Περίπου US${cost} ανά παραλλαγή στα {w}×{h} (δημοσιευμένες τιμές της OpenAI· χρεώνονται και οι εικόνες που αποστέλλονται).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Περίπου US${cost} συνολικά ({n} × US${each}, δημοσιευμένες τιμές του παρόχου).
+	Default (low)	Προεπιλογή (χαμηλή)
+	Get an OpenAI API key	Λήψη κλειδιού API της OpenAI
+	Input fidelity	Πιστότητα εισόδου
+	OpenAI publishes no price for this quality; see its pricing page.	Η OpenAI δεν δημοσιεύει τιμή για αυτήν την ποιότητα· δείτε τη σελίδα τιμολόγησής της.
+	Paste your OpenAI API key	Επικολλήστε το κλειδί API της OpenAI
+	Quality (compression)	Ποιότητα (συμπίεση)
+	Very high	Πολύ υψηλή
+	Working resolution	Ανάλυση εργασίας
+	4K (experimental)	4K (πειραματική)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Τίποτα δεν αποστέλλεται μέχρι να εκτελέσετε το παραγωγικό γέμισμα. Κάθε φορά που το κάνετε, το PhotoCraft στέλνει στην OpenAI (api.openai.com) την επιλεγμένη περιοχή και την εικόνα γύρω της, μια μάσκα της επιλογής και την περιγραφή σας, μαζί με το κλειδί API σας. Ισχύουν οι όροι και η πολιτική απορρήτου του API της OpenAI, και η χρήση χρεώνεται στο κλειδί σας.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (οι πιο πιστές επεξεργασίες)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (ταχύτερο)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (το φθηνότερο)
+	Generative Batch…	Παραγωγική μαζική επεξεργασία…
+	Generative Batch	Παραγωγική μαζική επεξεργασία
+	Start Batch	Έναρξη μαζικής επεξεργασίας
+	{on} of {n} ticked	Επιλεγμένα {on} από {n}
+	Images	Εικόνες
+	Open documents	Ανοιχτά έγγραφα
+	A folder	Φάκελος
+	No folder chosen	Δεν επιλέχθηκε φάκελος
+	Choose Folder…	Επιλογή φακέλου…
+	What to change in each image	Τι θα αλλάξει σε κάθε εικόνα
+	Each image is edited whole, as Edit selection does with all of it selected.	Κάθε εικόνα επεξεργάζεται ολόκληρη, όπως κάνει η «Επεξεργασία επιλογής» όταν είναι επιλεγμένη όλη η εικόνα.
+	Same look in all	Ίδιο ύφος σε όλες
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Η πρώτη εικόνα επεξεργάζεται πρώτη· το αποτέλεσμά της πηγαίνει στις υπόλοιπες ως τελευταία εικόνα αναφοράς τους, και στην περιγραφή τους προστίθεται το εξής:
+	Results	Αποτελέσματα
+	JPEG files in an {folder} folder beside each image	Αρχεία JPEG σε φάκελο {folder} δίπλα σε κάθε εικόνα
+	Beside each image	Δίπλα σε κάθε εικόνα
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Κάθε εικόνα αποστέλλεται στο {name} ({model}) μία φορά ανά παραλλαγή, μαζί με τις εικόνες αναφοράς.
+	Say what to change in each image.	Γράψτε τι θα αλλάξει σε κάθε εικόνα.
+	Generative Batch wrote {n} files to {folder}.	Η παραγωγική μαζική επεξεργασία έγραψε {n} αρχεία σε {folder}.
+	{n} folders	{n} φακέλους
+	{n} failed ({error}).	{n} απέτυχαν ({error}).
+	Stopped: {why}	Διακόπηκε: {why}
+	Generative Batch failed: {error}	Η παραγωγική μαζική επεξεργασία απέτυχε: {error}
+	Generative Batch cancelled; the files already written are kept.	Η παραγωγική μαζική επεξεργασία ακυρώθηκε· τα αρχεία που έχουν ήδη γραφτεί διατηρούνται.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Οι «Ρυθμίσεις παραγωγικής ΤΝ» μπορούν να αλλάξουν μόνο μέσα από το ίδιο το PhotoCraft, όχι μέσω αυτοματοποίησης.
+	{model} doesn't take reference images: they aren't sent.	Το {model} δεν δέχεται εικόνες αναφοράς: δεν αποστέλλονται.
+	{model} takes {max} reference images here: the first {max} are sent.	Το {model} δέχεται εδώ {max} εικόνες αναφοράς: αποστέλλονται οι πρώτες {max}.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	Το {model} δεν επεξεργάζεται το περιεχόμενο της επιλογής: γεμίζει την επιλογή από την περιγραφή.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	Το {model} δεν επεξεργάζεται εικόνες βάσει οδηγιών, κάτι που χρειάζεται η παραγωγική μαζική επεξεργασία: επιλέξτε ένα μοντέλο που το κάνει, όπως Gemini, OpenAI ή Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Διατήρηση όσων αποστέλλονται και επιστρέφονται
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Η εικόνα, η μάσκα, οι εικόνες αναφοράς, η περιγραφή και τα αποτελέσματα κάθε γεμίσματος αποθηκεύονται στο {dir}, σε έναν φάκελο ανά ημέρα (UTC), για σύγκριση και διάγνωση.

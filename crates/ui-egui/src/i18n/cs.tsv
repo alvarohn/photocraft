@@ -3886,3 +3886,52 @@ navigator	Zoom	Zvětšení
 @plural	{n} waiting|{n} waiting	{n} čeká|{n} čekají|{n} čeká
 @plural	{n} failed|{n} failed	{n} selhala|{n} selhaly|{n} selhalo
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Vyplnit každou z {n} oblastí zvlášť|Vyplnit každou z {n} oblastí zvlášť|Vyplnit každou z {n} oblastí zvlášť
+	Sends the same area and prompt to {name} again for {n} more.	Odešle stejnou oblast a popis znovu do {name} pro {n} další.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Každá generativní výplň odešle jeden požadavek na variantu (1 až 4, volí se v jejím dialogu) a každý se účtuje na váš klíč.
+	How many versions to generate. Each one is a request of its own.	Kolik verzí vytvořit. Každá je samostatný požadavek.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Přibližně US${cost} za variantu při {w}×{h} (ceny zveřejněné společností OpenAI; účtují se i odeslané obrázky).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Celkem přibližně US${cost} ({n} × US${each}, ceny zveřejněné poskytovatelem).
+	Default (low)	Výchozí (nízká)
+	Get an OpenAI API key	Získat klíč API OpenAI
+	Input fidelity	Věrnost vstupu
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI pro tuto kvalitu nezveřejňuje cenu; viz stránka s ceníkem OpenAI.
+	Paste your OpenAI API key	Vložte svůj klíč API OpenAI
+	Quality (compression)	Kvalita (komprese)
+	Very high	Velmi vysoká
+	Working resolution	Pracovní rozlišení
+	4K (experimental)	4K (experimentální)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Nic se neodešle, dokud nespustíte generativní výplň. Pokaždé, když ji spustíte, odešle PhotoCraft společnosti OpenAI (api.openai.com) vybranou oblast i obraz kolem ní, masku výběru a váš popis spolu s vaším klíčem API. Platí podmínky a zásady ochrany soukromí rozhraní API společnosti OpenAI a využití se účtuje na váš klíč.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (nejvěrnější úpravy)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (rychlejší)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (nejlevnější)
+	Generative Batch…	Generativní dávka…
+	Generative Batch	Generativní dávka
+	Start Batch	Spustit dávku
+	{on} of {n} ticked	Zaškrtnuto {on} z {n}
+	Images	Obrázky
+	Open documents	Otevřené dokumenty
+	A folder	Složka
+	No folder chosen	Není vybrána žádná složka
+	Choose Folder…	Vybrat složku…
+	What to change in each image	Co změnit v každém obrázku
+	Each image is edited whole, as Edit selection does with all of it selected.	Každý obrázek se upraví celý, stejně jako Upravit výběr, když je vybrán celý.
+	Same look in all	Stejný styl u všech
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	První obrázek se upraví jako první; jeho výsledek dostanou ostatní jako poslední referenční obrázek a k jejich popisu se přidá toto:
+	Results	Výsledky
+	JPEG files in an {folder} folder beside each image	Soubory JPEG ve složce {folder} vedle každého obrázku
+	Beside each image	Vedle každého obrázku
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Každý obrázek se odešle do {name} ({model}) jednou za každou variantu, spolu s referenčními obrázky.
+	Say what to change in each image.	Uveďte, co se má v každém obrázku změnit.
+	Generative Batch wrote {n} files to {folder}.	Generativní dávka zapsala soubory do {folder} (počet: {n}).
+	{n} folders	{n} složek
+	{n} failed ({error}).	Selhalo: {n} ({error}).
+	Stopped: {why}	Zastaveno: {why}
+	Generative Batch failed: {error}	Generativní dávka selhala: {error}
+	Generative Batch cancelled; the files already written are kept.	Generativní dávka zrušena; již zapsané soubory zůstávají zachovány.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Nastavení generativní AI lze měnit jen přímo v PhotoCraftu, ne automatizací.
+	{model} doesn't take reference images: they aren't sent.	{model} nepřijímá referenční obrázky: neodešlou se.
+	{model} takes {max} reference images here: the first {max} are sent.	Limit referenčních obrázků pro {model} je zde {max}: odešlou se jen obrázky do limitu {max}.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} neupravuje obsah výběru: vyplní výběr podle popisu.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} neupravuje obrázky podle pokynů, což generativní dávka potřebuje: zvolte model, který to umí, například Gemini, OpenAI nebo Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Uchovávat, co se odesílá a vrací
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Obraz, maska, referenční obrázky, popis a výsledky každé výplně se ukládají do {dir}, do jedné složky za den (UTC), pro porovnání a diagnostiku.

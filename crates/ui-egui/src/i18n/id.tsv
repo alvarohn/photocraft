@@ -3273,3 +3273,52 @@ curves	Smooth	Haluskan
 @plural	{n} waiting|{n} waiting	{n} menunggu
 @plural	{n} failed|{n} failed	{n} gagal
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Isi masing-masing dari {n} area terpisah secara tersendiri
+	Sends the same area and prompt to {name} again for {n} more.	Mengirim area dan deskripsi yang sama ke {name} lagi untuk {n} lagi.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Setiap Isian generatif mengirim satu permintaan per variasi (1 sampai 4, dipilih di dialognya), masing-masing ditagihkan ke kunci Anda.
+	How many versions to generate. Each one is a request of its own.	Jumlah versi yang dibuat. Masing-masing adalah permintaan tersendiri.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Sekitar US${cost} per variasi pada {w}×{h} (harga yang dipublikasikan OpenAI; gambar yang dikirim juga ditagihkan).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Total sekitar US${cost} ({n} × US${each}, harga yang dipublikasikan penyedia).
+	Default (low)	Default (rendah)
+	Get an OpenAI API key	Dapatkan kunci API OpenAI
+	Input fidelity	Fidelitas input
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI tidak memublikasikan harga untuk kualitas ini; lihat halaman harganya.
+	Paste your OpenAI API key	Tempel kunci API OpenAI Anda
+	Quality (compression)	Kualitas (kompresi)
+	Very high	Sangat tinggi
+	Working resolution	Resolusi kerja
+	4K (experimental)	4K (eksperimental)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Tidak ada yang dikirim sampai Anda menjalankan isian generatif. Setiap kali Anda menjalankannya, PhotoCraft mengirim area yang dipilih beserta gambar di sekitarnya, masker dari seleksi, dan deskripsi Anda ke OpenAI (api.openai.com) dengan kunci API Anda. Ketentuan API dan kebijakan privasi OpenAI berlaku, dan penggunaannya ditagihkan ke kunci Anda.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (edit paling akurat)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (lebih cepat)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (termurah)
+	Generative Batch…	Batch generatif…
+	Generative Batch	Batch generatif
+	Start Batch	Mulai Batch
+	{on} of {n} ticked	{on} dari {n} dicentang
+	Images	Gambar
+	Open documents	Dokumen terbuka
+	A folder	Sebuah folder
+	No folder chosen	Belum ada folder yang dipilih
+	Choose Folder…	Pilih Folder…
+	What to change in each image	Apa yang diubah di setiap gambar
+	Each image is edited whole, as Edit selection does with all of it selected.	Setiap gambar diedit secara utuh, seperti Edit seleksi bila seluruh gambar diseleksi.
+	Same look in all	Tampilan sama untuk semua
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Gambar pertama diedit lebih dulu; hasilnya diberikan ke gambar lain sebagai gambar referensi terakhir, dengan teks ini ditambahkan ke deskripsinya:
+	Results	Hasil
+	JPEG files in an {folder} folder beside each image	File JPEG dalam folder {folder} di samping setiap gambar
+	Beside each image	Di samping setiap gambar
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Setiap gambar dikirim ke {name} ({model}) sekali per variasi, beserta gambar referensi.
+	Say what to change in each image.	Tuliskan apa yang akan diubah di setiap gambar.
+	Generative Batch wrote {n} files to {folder}.	Batch generatif menulis {n} file ke {folder}.
+	{n} folders	{n} folder
+	{n} failed ({error}).	{n} gagal ({error}).
+	Stopped: {why}	Dihentikan: {why}
+	Generative Batch failed: {error}	Batch generatif gagal: {error}
+	Generative Batch cancelled; the files already written are kept.	Batch generatif dibatalkan; file yang sudah ditulis tetap disimpan.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Pengaturan AI generatif hanya dapat diubah di PhotoCraft sendiri, bukan lewat otomatisasi.
+	{model} doesn't take reference images: they aren't sent.	{model} tidak menerima gambar referensi: gambar referensi tidak dikirim.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} menerima {max} gambar referensi di sini: {max} yang pertama dikirim.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} tidak mengedit isi seleksi: model ini mengisi seleksi berdasarkan deskripsi.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} tidak mengedit gambar berdasarkan instruksi, padahal batch generatif memerlukannya: pilih model yang bisa, seperti Gemini, OpenAI, atau Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Simpan yang dikirim dan diterima
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Gambar, masker, gambar referensi, deskripsi, dan hasil setiap isian disimpan di {dir}, dalam satu folder per hari (UTC), untuk dibandingkan dan didiagnosis.

@@ -3980,3 +3980,52 @@ curves	Smooth	Згладити
 @plural	{n} waiting|{n} waiting	{n} у черзі|{n} у черзі|{n} у черзі
 @plural	{n} failed|{n} failed	{n} з помилкою|{n} з помилкою|{n} з помилкою
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Залити кожну з {n} окремих областей окремо|Залити кожну з {n} окремих областей окремо|Залити кожну з {n} окремих областей окремо
+	Sends the same area and prompt to {name} again for {n} more.	Знову надсилає ту саму область і опис до {name}, щоб отримати ще {n}.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Кожна генеративна заливка надсилає по одному запиту на варіант (від 1 до 4, задається в її діалозі), і кожен оплачується за вашим ключем.
+	How many versions to generate. Each one is a request of its own.	Скільки варіантів створити. Кожен — окремий запит.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Близько US${cost} за варіант розміром {w}×{h} (за опублікованими цінами OpenAI; надіслані зображення теж оплачуються).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Усього близько US${cost} ({n} × US${each}, за опублікованими цінами постачальника).
+	Default (low)	Типова (низька)
+	Get an OpenAI API key	Отримати ключ API OpenAI
+	Input fidelity	Вірність вхідним зображенням
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI не публікує ціни для цієї якості; див. сторінку цін OpenAI.
+	Paste your OpenAI API key	Вставте ключ API OpenAI
+	Quality (compression)	Якість (стиснення)
+	Very high	Дуже висока
+	Working resolution	Робоча роздільність
+	4K (experimental)	4K (експериментально)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Нічого не надсилається, доки ви не запустите генеративну заливку. Під час кожного запуску PhotoCraft надсилає до OpenAI (api.openai.com) виділену область разом із зображенням навколо неї, маску виділення та ваш опис, а також ваш ключ API. Діють умови використання API та політика конфіденційності OpenAI, а використання оплачується за вашим ключем.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (найточніші правки)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (швидше)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (найдешевша)
+	Generative Batch…	Генеративна пакетна обробка…
+	Generative Batch	Генеративна пакетна обробка
+	Start Batch	Запустити обробку
+	{on} of {n} ticked	Позначено: {on} з {n}
+	Images	Зображення
+	Open documents	Відкриті документи
+	A folder	Тека
+	No folder chosen	Теку не вибрано
+	Choose Folder…	Вибрати теку…
+	What to change in each image	Що змінити в кожному зображенні
+	Each image is edited whole, as Edit selection does with all of it selected.	Кожне зображення змінюється цілком — як «Змінити виділення», коли виділено все зображення.
+	Same look in all	Єдиний стиль для всіх
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Спочатку змінюється перше зображення; його результат передається іншим як останнє референсне зображення, а до їхнього опису додається таке:
+	Results	Результати
+	JPEG files in an {folder} folder beside each image	Файли JPEG у теці «{folder}» поруч із кожним зображенням
+	Beside each image	Поруч із кожним зображенням
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Кожне зображення надсилається до {name} ({model}) по одному разу на варіант разом із референсними зображеннями.
+	Say what to change in each image.	Вкажіть, що змінити в кожному зображенні.
+	Generative Batch wrote {n} files to {folder}.	Генеративна пакетна обробка записала файли ({n}) у {folder}.
+	{n} folders	теки ({n})
+	{n} failed ({error}).	Не вдалося: {n} ({error}).
+	Stopped: {why}	Зупинено: {why}
+	Generative Batch failed: {error}	Генеративна пакетна обробка не вдалася: {error}
+	Generative Batch cancelled; the files already written are kept.	Генеративну пакетну обробку скасовано; уже записані файли збережено.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Налаштування генеративного ШІ можна змінити лише в самому PhotoCraft, а не через автоматизацію.
+	{model} doesn't take reference images: they aren't sent.	{model} не приймає референсні зображення: вони не надсилаються.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} приймає тут референсних зображень не більше {max}: надсилаються перші {max}.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} не змінює те, що у виділенні, а заповнює виділення за описом.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} не змінює зображення за інструкціями, а це потрібно для генеративної пакетної обробки: виберіть модель, яка це вміє, наприклад Gemini, OpenAI або Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Зберігати надіслане й отримане
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Зображення, маска, референсні зображення, опис і результати кожної заливки зберігаються в {dir}, по теці на кожен день (UTC), для порівняння й діагностики.

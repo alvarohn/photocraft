@@ -103,8 +103,9 @@ What the 2026-10-18 additions (variations, OpenAI, Generative Batch) leave undon
   each image's size; retrying is opening the dialog again (only the failed files are ticked), not
   a per-image Retry button; a batch is not listed in the fills' status-bar list (it shows as a
   job).
-- **Translations**: the new strings are in Spanish only; the other 19 languages show them in
-  English.
+- **Translations**: the new strings are in the 20 languages whose catalogs are complete (the
+  i18n tests require it); written by a model from each catalog's own terms, not yet read by
+  native speakers.
 
 ## texjer's pull request and the `genai/side-by-side` branch
 

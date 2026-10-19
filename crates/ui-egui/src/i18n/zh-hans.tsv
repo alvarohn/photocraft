@@ -2897,3 +2897,52 @@ curves	Smooth	平滑
 @plural	{n} waiting|{n} waiting	{n} 个等待中
 @plural	{n} failed|{n} failed	{n} 个失败
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	分别填充 {n} 个分离的区域
+	Sends the same area and prompt to {name} again for {n} more.	再次将相同区域和描述发送到 {name}，再生成 {n} 个。
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	每次生成式填充会为每个变体发送一个请求（1 到 4 个，在其对话框中选择），每个都计费到你的密钥。
+	How many versions to generate. Each one is a request of its own.	要生成的版本数量。每个版本都是一个单独的请求。
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	{w}×{h} 下每个变体约 US${cost}（OpenAI 公布的价格；发送的图像也会计费）。
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	总计约 US${cost}（{n} × US${each}，服务提供方公布的价格）。
+	Default (low)	默认（低）
+	Get an OpenAI API key	获取 OpenAI API 密钥
+	Input fidelity	输入保真度
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI 未公布此品质的价格；请参阅其价格页面。
+	Paste your OpenAI API key	粘贴你的 OpenAI API 密钥
+	Quality (compression)	品质（压缩）
+	Very high	非常高
+	Working resolution	工作分辨率
+	4K (experimental)	4K（实验性）
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	在你运行生成式填充之前，不会发送任何内容。每次运行时，PhotoCraft 会将选中的区域及其周围的图像、选区的蒙版以及你的描述，连同你的 API 密钥一起发送给 OpenAI（api.openai.com）。OpenAI API 的条款和隐私政策适用，用量计入你的密钥。
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst（编辑最忠实）
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare（更快）
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini（最便宜）
+	Generative Batch…	生成式批处理…
+	Generative Batch	生成式批处理
+	Start Batch	开始批处理
+	{on} of {n} ticked	已勾选 {n} 个中的 {on} 个
+	Images	图像
+	Open documents	打开的文档
+	A folder	文件夹
+	No folder chosen	未选择文件夹
+	Choose Folder…	选择文件夹…
+	What to change in each image	要在每张图像中更改的内容
+	Each image is edited whole, as Edit selection does with all of it selected.	每张图像都会整体编辑，如同全选后使用“编辑选区”。
+	Same look in all	所有图像风格一致
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	先编辑第一张图像；其结果会作为最后一张参考图像发送给其余图像，并在它们的描述中加上以下内容：
+	Results	结果
+	JPEG files in an {folder} folder beside each image	JPEG 文件，位于每张图像旁边的 {folder} 文件夹中
+	Beside each image	每张图像旁边
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	每张图像会按每个变体发送一次给 {name}（{model}），并附带参考图像。
+	Say what to change in each image.	请说明要在每张图像中更改的内容。
+	Generative Batch wrote {n} files to {folder}.	生成式批处理已将 {n} 个文件写入 {folder}。
+	{n} folders	{n} 个文件夹
+	{n} failed ({error}).	{n} 个失败（{error}）。
+	Stopped: {why}	已停止：{why}
+	Generative Batch failed: {error}	生成式批处理失败：{error}
+	Generative Batch cancelled; the files already written are kept.	已取消生成式批处理；已写入的文件会保留。
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	生成式 AI 设置只能在 PhotoCraft 中直接更改，不能通过自动化更改。
+	{model} doesn't take reference images: they aren't sent.	{model} 不接受参考图像：不会发送参考图像。
+	{model} takes {max} reference images here: the first {max} are sent.	{model} 在此处最多接受 {max} 张参考图像：只发送前 {max} 张。
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} 不会编辑选区中的内容：它会根据描述填充选区。
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} 无法按指令编辑图像，而生成式批处理需要此功能：请选择支持此功能的模型，例如 Gemini、OpenAI 或 Qwen Image 2.1 Turbo。
+	Keep what is sent and returned	保留发送和返回的内容
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	每次填充的图像、蒙版、参考图像、描述和结果都会保存在 {dir} 中，每天一个文件夹（UTC），便于比较和诊断。

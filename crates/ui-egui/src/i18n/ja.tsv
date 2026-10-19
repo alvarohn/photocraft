@@ -3957,3 +3957,52 @@ curves	Smooth	スムーズ
 @plural	{n} waiting|{n} waiting	{n} 件待機中
 @plural	{n} failed|{n} failed	{n} 件失敗
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	{n} 個の離れた領域をそれぞれ個別に塗りつぶす
+	Sends the same area and prompt to {name} again for {n} more.	同じ範囲と説明文を {name} にもう一度送り、さらに {n} 個生成します。
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	生成塗りつぶしはバリエーションごとに 1 回リクエストを送信し（数はダイアログで 1 から 4 の範囲で選択）、それぞれがお使いのキーに課金されます。
+	How many versions to generate. Each one is a request of its own.	生成するバージョンの数です。1 つごとに個別のリクエストになります。
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	{w}×{h} でバリエーション 1 つあたり約 US${cost}（OpenAI の公表価格。送信する画像も課金されます）。
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	合計約 US${cost}（{n} × US${each}、プロバイダーの公表価格）。
+	Default (low)	既定（低）
+	Get an OpenAI API key	OpenAI API キーを取得
+	Input fidelity	入力の忠実度
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI はこの画質の価格を公表していません。料金ページを参照してください。
+	Paste your OpenAI API key	OpenAI API キーを貼り付け
+	Quality (compression)	画質（圧縮）
+	Very high	非常に高い
+	Working resolution	作業解像度
+	4K (experimental)	4K（実験的）
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	生成塗りつぶしを実行するまで、何も送信されません。実行するたびに、PhotoCraft は選択範囲とその周囲の画像、選択範囲のマスク、入力した説明文を、API キーとともに OpenAI（api.openai.com）へ送信します。OpenAI の API 利用規約とプライバシーポリシーが適用され、利用料金はお使いのキーに請求されます。
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst（最も忠実な編集）
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare（より高速）
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini（最も安価）
+	Generative Batch…	生成バッチ処理…
+	Generative Batch	生成バッチ処理
+	Start Batch	バッチ処理を開始
+	{on} of {n} ticked	{n} 件中 {on} 件をチェック
+	Images	画像
+	Open documents	開いているドキュメント
+	A folder	フォルダー
+	No folder chosen	フォルダーが選択されていません
+	Choose Folder…	フォルダーを選択…
+	What to change in each image	各画像で変更する内容
+	Each image is edited whole, as Edit selection does with all of it selected.	各画像は全体が編集されます。全体を選択して「選択範囲を編集」を使った場合と同じです。
+	Same look in all	すべての画像で雰囲気をそろえる
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	最初の画像を先に編集し、その結果を他の画像に最後の参照画像として渡します。その際、説明文に次の内容が追加されます：
+	Results	結果
+	JPEG files in an {folder} folder beside each image	各画像と同じ場所にある {folder} フォルダー内の JPEG ファイル
+	Beside each image	各画像と同じ場所
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	各画像は参照画像とともに、バリエーションごとに 1 回 {name}（{model}）へ送信されます。
+	Say what to change in each image.	各画像で変更する内容を入力してください。
+	Generative Batch wrote {n} files to {folder}.	生成バッチ処理で {n} 個のファイルを {folder} に書き出しました。
+	{n} folders	{n} 個のフォルダー
+	{n} failed ({error}).	{n} 件失敗しました（{error}）。
+	Stopped: {why}	停止しました：{why}
+	Generative Batch failed: {error}	生成バッチ処理に失敗しました：{error}
+	Generative Batch cancelled; the files already written are kept.	生成バッチ処理をキャンセルしました。書き出し済みのファイルは保持されます。
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	生成 AI の設定は PhotoCraft 本体でのみ変更でき、自動処理からは変更できません。
+	{model} doesn't take reference images: they aren't sent.	{model} は参照画像に対応していないため、参照画像は送信されません。
+	{model} takes {max} reference images here: the first {max} are sent.	ここでは {model} が受け付ける参照画像は {max} 枚までです。最初の {max} 枚が送信されます。
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} は選択範囲の内容を編集しません。説明文をもとに選択範囲を塗りつぶします。
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} は指示による画像編集に対応していませんが、生成バッチ処理にはそれが必要です。Gemini、OpenAI、Qwen Image 2.1 Turbo など、対応しているモデルを選んでください。
+	Keep what is sent and returned	送信した内容と返された結果を保存
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	各塗りつぶしの画像、マスク、参照画像、説明文、結果が、比較や診断のために {dir} 内の 1 日ごとのフォルダー（UTC）に保存されます。

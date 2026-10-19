@@ -3286,3 +3286,52 @@ curves	Smooth	Lisser
 @plural	{n} waiting|{n} waiting	{n} en attente|{n} en attente
 @plural	{n} failed|{n} failed	{n} en échec|{n} en échec
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Remplir séparément chacune des {n} zones|Remplir séparément chacune des {n} zones
+	Sends the same area and prompt to {name} again for {n} more.	Renvoie la même zone et la même description à {name} pour {n} de plus.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Chaque remplissage génératif envoie une requête par variante (de 1 à 4, au choix dans sa boîte de dialogue), chacune facturée sur votre clé.
+	How many versions to generate. Each one is a request of its own.	Nombre de versions à générer. Chacune est une requête distincte.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Environ US${cost} par variante en {w}×{h} (tarifs publiés par OpenAI ; les images envoyées sont aussi facturées).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Environ US${cost} au total ({n} × US${each}, tarifs publiés par le fournisseur).
+	Default (low)	Par défaut (basse)
+	Get an OpenAI API key	Obtenir une clé d’API OpenAI
+	Input fidelity	Fidélité à l’entrée
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI ne publie pas de prix pour cette qualité ; consultez sa page de tarifs.
+	Paste your OpenAI API key	Collez votre clé d’API OpenAI
+	Quality (compression)	Qualité (compression)
+	Very high	Très haute
+	Working resolution	Résolution de travail
+	4K (experimental)	4K (expérimental)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Rien n’est envoyé tant que vous n’exécutez pas le remplissage génératif. À chaque exécution, PhotoCraft envoie la zone sélectionnée et l’image qui l’entoure, un masque de la sélection et votre description à OpenAI (api.openai.com) avec votre clé d’API. Les conditions d’utilisation et la politique de confidentialité de l’API d’OpenAI s’appliquent, et l’utilisation est facturée sur votre clé.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (modifications les plus fidèles)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (plus rapide)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (le moins cher)
+	Generative Batch…	Traitement par lots génératif…
+	Generative Batch	Traitement par lots génératif
+	Start Batch	Lancer le traitement
+	{on} of {n} ticked	{on} sur {n} cochés
+	Images	Images
+	Open documents	Documents ouverts
+	A folder	Un dossier
+	No folder chosen	Aucun dossier choisi
+	Choose Folder…	Choisir un dossier…
+	What to change in each image	Ce qu’il faut changer dans chaque image
+	Each image is edited whole, as Edit selection does with all of it selected.	Chaque image est modifiée en entier, comme le fait Modifier la sélection quand tout est sélectionné.
+	Same look in all	Même style pour toutes les images
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	La première image est modifiée en premier ; son résultat est transmis aux autres comme dernière image de référence, avec ceci ajouté à leur description :
+	Results	Résultats
+	JPEG files in an {folder} folder beside each image	Fichiers JPEG dans un dossier {folder} à côté de chaque image
+	Beside each image	À côté de chaque image
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Chaque image est envoyée à {name} ({model}) une fois par variante, avec les images de référence.
+	Say what to change in each image.	Indiquez ce qu’il faut changer dans chaque image.
+	Generative Batch wrote {n} files to {folder}.	Le traitement par lots génératif a écrit {n} fichiers dans {folder}.
+	{n} folders	{n} dossiers
+	{n} failed ({error}).	{n} en échec ({error}).
+	Stopped: {why}	Arrêté : {why}
+	Generative Batch failed: {error}	Échec du traitement par lots génératif : {error}
+	Generative Batch cancelled; the files already written are kept.	Traitement par lots génératif annulé ; les fichiers déjà écrits sont conservés.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Les réglages de l’IA générative ne peuvent être modifiés que dans PhotoCraft même, pas par automatisation.
+	{model} doesn't take reference images: they aren't sent.	{model} n’accepte pas d’images de référence : elles ne sont pas envoyées.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} accepte ici {max} images de référence : les {max} premières sont envoyées.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} ne modifie pas le contenu de la sélection : il remplit la sélection à partir de la description.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} ne modifie pas les images à partir d’instructions, ce dont le traitement par lots génératif a besoin : choisissez un modèle qui le fait, comme Gemini, OpenAI ou Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Conserver ce qui est envoyé et reçu
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	L’image, le masque, les images de référence, la description et les résultats de chaque remplissage sont enregistrés dans {dir}, dans un dossier par jour (UTC), pour comparer et diagnostiquer.
