@@ -122,6 +122,19 @@ test, and make that the new `genai/side-by-side`; then merge it into `main` keep
 the fork's own files (`git merge -s ours --no-commit`, `git checkout <branch> -- .`, restore
 `main.rs`). The automatic merge below doesn't do this: it only follows the official `main`.
 
+texjer took `genai/side-by-side` into #3703 as it was (2026-10-18: the Edit tab and reference
+images, fills side by side, their translations and tests); its Generative AI files are the same as
+`main`'s were before the 2026-10-18 additions. CodeRabbit's review of #3703 that day found, in that
+shared code: generation sources kept by layer id alone and never dropped (a reopened `.pcraft`
+keeps its document and layer ids, so its groups were taken as generative; memory grew with every
+fill), the group's mask not at the document's depth, a "Generating…" row lost when its anchor layer
+is hidden by Isolate Layers or the layer filter, and debug dump folders that could collide. The
+fork fixed them (2026-10-19): sources by document and layer, dropped when the document closes (one
+line in the official `Session::close`) or its group is gone, the mask converted as every new mask
+is, the unplaced rows worked out from the rows shown (one line in the official `panels.rs`), and
+dump folders numbered. The same fixes, on texjer's head, are offered to him in
+`genai/coderabbit-fixes`.
+
 ## Merging the official repository
 
 The workflow merges in the runner and does not push the merge: the default `GITHUB_TOKEN` cannot

@@ -244,6 +244,9 @@ fn the_document_keeps_its_mode_and_depth() {
         let l = d.layer(photocraft_doc::LayerId(r["variations"][0].as_u64().unwrap())).unwrap();
         let f = l.surface().unwrap().format();
         assert_eq!((f.mode, f.sample), (d.mode, d.depth), "{mode} {depth}");
+        // The group's mask too, as every new mask.
+        let group = d.layer(photocraft_doc::LayerId(r["layer"].as_u64().unwrap())).unwrap();
+        assert_eq!(group.mask.as_ref().unwrap().surface.format().sample, d.depth, "{mode} {depth}");
     }
 }
 
@@ -1140,4 +1143,29 @@ fn each_variation_keeps_the_whole_area_returned_under_the_groups_mask() {
     assert_eq!(rgb_at(&s, 125, 100), [255, 255, 255]);
     assert_eq!(variation_rgb(&s, id, 0, 125, 100), [255, 0, 0]);
     assert_eq!(variation_rgb(&s, id, 0, 135, 100), [255, 0, 0]);
+}
+
+#[test]
+fn a_reopened_documents_groups_are_ordinary_and_closing_forgets_them() {
+    let (mut s, _fake, r) = filled(Some(1));
+    let group = LayerId(r["layer"].as_u64().unwrap());
+    assert!(s.is_enabled(MORE));
+    let bytes = photocraft_format::save_to_bytes(&s.active().unwrap().doc, &Default::default()).unwrap();
+    assert_eq!(s.genai_state.sources.len(), 1);
+    s.close(0);
+    assert!(s.genai_state.sources.is_empty(), "closing the document forgets its groups' sources");
+    crate::file_cmds::open_bytes_as(&mut s, "fill.pcraft", &bytes, None, None).unwrap();
+    assert!(doc(&s).layer(group).is_some(), "the same layer id after reopening");
+    s.active_mut().unwrap().active_layer = Some(group);
+    assert!(!s.is_enabled(MORE), "reopened, it is an ordinary group: nothing is sent again");
+    assert!(s.execute(MORE, json!({"count": 1})).is_err());
+}
+
+#[test]
+fn sources_of_groups_that_are_gone_go_when_the_next_fill_lands() {
+    let (mut s, _fake, _r) = filled(Some(1));
+    assert!(s.undo());
+    s.execute("select.rect", json!({"x": 10, "y": 10, "width": 20, "height": 20})).unwrap();
+    s.execute(FILL, json!({"prompt": "a duck", "variations": 1})).unwrap();
+    assert_eq!(s.genai_state.sources.len(), 1, "the undone group's source went");
 }
