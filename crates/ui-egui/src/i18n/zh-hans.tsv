@@ -2973,8 +2973,6 @@ curves	Smooth	平滑
 	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} 无法按指令编辑图像，而生成式批处理需要此功能：请选择支持此功能的模型，例如 Gemini、OpenAI 或 Qwen Image 2.1 Turbo。
 	Keep what is sent and returned	保留发送和返回的内容
 	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	每次填充的图像、蒙版、参考图像、描述和结果都会保存在 {dir} 中，每天一个文件夹（UTC），便于比较和诊断。
-	High	高
-	Low	低
 	Decrease Brush Size	减小画笔大小
 	Increase Brush Size	增大画笔大小
 	Decrease Brush Hardness	减小画笔硬度
