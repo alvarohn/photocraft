@@ -4197,3 +4197,52 @@ cameraRaw	Yellow	Sárga
 @plural	{n} waiting|{n} waiting	{n} várakozik
 @plural	{n} failed|{n} failed	{n} sikertelen
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	A(z) {n} különálló terület kitöltése egyenként
+	Sends the same area and prompt to {name} again for {n} more.	Ugyanazt a területet és leírást újra elküldi ide: {name}, további {n} változatért.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Minden Generatív kitöltés változatonként egy kérést küld (1–4, a párbeszédablakában választható), mindegyiket a kulcsodra számlázzák.
+	How many versions to generate. Each one is a request of its own.	Hány változat készüljön. Mindegyik külön kérés.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Változatonként kb. US${cost} {w}×{h} méretben (az OpenAI közzétett árai szerint; az elküldött képeket is számlázzák).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Összesen kb. US${cost} ({n} × US${each}, a szolgáltató közzétett árai szerint).
+	Default (low)	Alapértelmezett (alacsony)
+	Get an OpenAI API key	OpenAI API-kulcs beszerzése
+	Input fidelity	Bemeneti hűség
+	OpenAI publishes no price for this quality; see its pricing page.	Az OpenAI nem tesz közzé árat ehhez a minőséghez; lásd az árazási oldalát.
+	Paste your OpenAI API key	Illeszd be az OpenAI API-kulcsodat
+	Quality (compression)	Minőség (tömörítés)
+	Very high	Nagyon magas
+	Working resolution	Munkafelbontás
+	4K (experimental)	4K (kísérleti)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Semmi sem kerül elküldésre, amíg nem futtatod a Generatív kitöltést. Ilyenkor a PhotoCraft minden alkalommal elküldi a kijelölt területet a körülötte lévő képpel, a kijelölés maszkját és a leírásodat az OpenAI-nak (api.openai.com) az API-kulcsoddal. Az OpenAI API felhasználási feltételei és adatvédelmi irányelvei érvényesek, a használatot a kulcsodra számlázzák.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (leghűbb szerkesztés)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (gyorsabb)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (legolcsóbb)
+	Generative Batch…	Generatív kötegelt feldolgozás…
+	Generative Batch	Generatív kötegelt feldolgozás
+	Start Batch	Kötegelt feldolgozás indítása
+	{on} of {n} ticked	{on} / {n} bejelölve
+	Images	Képek
+	Open documents	Megnyitott dokumentumok
+	A folder	Egy mappa
+	No folder chosen	Nincs kiválasztott mappa
+	Choose Folder…	Mappa kiválasztása…
+	What to change in each image	Mit kell módosítani az egyes képeken
+	Each image is edited whole, as Edit selection does with all of it selected.	Minden képet teljes egészében szerkeszt, ahogy a Kijelölés szerkesztése tenné, ha az egész kép ki lenne jelölve.
+	Same look in all	Azonos megjelenés minden képen
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Először az első kép készül el; az eredménye utolsó referenciaképként kerül a többihez, a leírásukhoz pedig ez adódik hozzá:
+	Results	Eredmények
+	JPEG files in an {folder} folder beside each image	JPEG-fájlok egy {folder} nevű mappában minden kép mellett
+	Beside each image	Minden kép mellett
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Minden kép változatonként egyszer, a referenciaképekkel együtt kerül elküldésre ide: {name} ({model}).
+	Say what to change in each image.	Írd le, mit kell módosítani az egyes képeken.
+	Generative Batch wrote {n} files to {folder}.	A generatív kötegelt feldolgozás {n} fájlt írt. Cél: {folder}.
+	{n} folders	{n} mappa
+	{n} failed ({error}).	{n} sikertelen ({error}).
+	Stopped: {why}	Leállt: {why}
+	Generative Batch failed: {error}	A generatív kötegelt feldolgozás sikertelen: {error}
+	Generative Batch cancelled; the files already written are kept.	Generatív kötegelt feldolgozás megszakítva; a már kiírt fájlok megmaradnak.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	A Generatív MI beállításai csak magában a PhotoCraftban módosíthatók, automatizálással nem.
+	{model} doesn't take reference images: they aren't sent.	A(z) {model} nem fogad referenciaképeket: ezek nem kerülnek elküldésre.
+	{model} takes {max} reference images here: the first {max} are sent.	A(z) {model} itt {max} referenciaképet fogad: az első {max} kerül elküldésre.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	A(z) {model} nem szerkeszti a kijelölés tartalmát: a leírás alapján tölti ki a kijelölést.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	A(z) {model} nem szerkeszt képeket utasítások alapján, pedig a generatív kötegelt feldolgozáshoz erre van szükség: válassz olyan modellt, amely képes rá, például Gemini, OpenAI vagy Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Az elküldött és visszakapott adatok megőrzése
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Minden kitöltés képét, maszkját, referenciaképeit, leírását és eredményeit menti ide: {dir}, naponta külön mappába (UTC), összehasonlításhoz és hibakereséshez.

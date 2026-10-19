@@ -3767,3 +3767,52 @@ curves	Smooth	Làm mượt
 @plural	{n} waiting|{n} waiting	{n} đang chờ
 @plural	{n} failed|{n} failed	{n} thất bại
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	Tô riêng từng vùng trong {n} vùng tách rời
+	Sends the same area and prompt to {name} again for {n} more.	Gửi lại cùng vùng và lời nhắc tới {name} để có thêm {n} biến thể.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Mỗi lần Tô tạo sinh gửi một yêu cầu cho mỗi biến thể (từ 1 đến 4, chọn trong hộp thoại), mỗi yêu cầu được tính phí vào khóa của bạn.
+	How many versions to generate. Each one is a request of its own.	Số phiên bản cần tạo. Mỗi phiên bản là một yêu cầu riêng.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	Khoảng US${cost} mỗi biến thể ở {w}×{h} (giá do OpenAI công bố; ảnh gửi đi cũng được tính phí).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Tổng cộng khoảng US${cost} ({n} × US${each}, theo giá nhà cung cấp công bố).
+	Default (low)	Mặc định (thấp)
+	Get an OpenAI API key	Lấy khóa OpenAI API
+	Input fidelity	Độ trung thành đầu vào
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI không công bố giá cho mức chất lượng này; hãy xem trang bảng giá của OpenAI.
+	Paste your OpenAI API key	Dán khóa OpenAI API của bạn
+	Quality (compression)	Chất lượng (nén)
+	Very high	Rất cao
+	Working resolution	Độ phân giải làm việc
+	4K (experimental)	4K (thử nghiệm)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Không có gì được gửi đi cho đến khi bạn chạy Tô tạo sinh. Mỗi lần bạn chạy, PhotoCraft gửi vùng đã chọn cùng phần ảnh xung quanh, một mặt nạ của vùng chọn và lời nhắc của bạn tới OpenAI (api.openai.com) kèm khóa API của bạn. Điều khoản API và chính sách quyền riêng tư của OpenAI được áp dụng, và mức sử dụng được tính phí vào khóa của bạn.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (chỉnh sửa trung thành nhất)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (nhanh hơn)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (rẻ nhất)
+	Generative Batch…	Hàng loạt tạo sinh…
+	Generative Batch	Hàng loạt tạo sinh
+	Start Batch	Bắt đầu xử lý hàng loạt
+	{on} of {n} ticked	Đã đánh dấu {on} trên {n}
+	Images	Hình ảnh
+	Open documents	Tài liệu đang mở
+	A folder	Một thư mục
+	No folder chosen	Chưa chọn thư mục
+	Choose Folder…	Chọn thư mục…
+	What to change in each image	Điều cần thay đổi trong mỗi ảnh
+	Each image is edited whole, as Edit selection does with all of it selected.	Mỗi ảnh được sửa toàn bộ, như Sửa vùng chọn khi toàn bộ ảnh được chọn.
+	Same look in all	Cùng phong cách cho tất cả
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Ảnh đầu tiên được sửa trước; kết quả của nó được gửi cho các ảnh còn lại làm ảnh tham chiếu cuối cùng, và nội dung này được thêm vào lời nhắc của chúng:
+	Results	Kết quả
+	JPEG files in an {folder} folder beside each image	Tệp JPEG trong thư mục {folder} cạnh mỗi ảnh
+	Beside each image	Cạnh mỗi ảnh
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Mỗi ảnh được gửi tới {name} ({model}) một lần cho mỗi biến thể, kèm ảnh tham chiếu.
+	Say what to change in each image.	Hãy cho biết cần thay đổi gì trong mỗi ảnh.
+	Generative Batch wrote {n} files to {folder}.	Hàng loạt tạo sinh đã ghi {n} tệp vào {folder}.
+	{n} folders	{n} thư mục
+	{n} failed ({error}).	{n} thất bại ({error}).
+	Stopped: {why}	Đã dừng: {why}
+	Generative Batch failed: {error}	Hàng loạt tạo sinh thất bại: {error}
+	Generative Batch cancelled; the files already written are kept.	Đã hủy Hàng loạt tạo sinh; các tệp đã ghi được giữ lại.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Chỉ có thể thay đổi Cài đặt AI tạo sinh trong chính PhotoCraft, không thể thay đổi bằng tự động hóa.
+	{model} doesn't take reference images: they aren't sent.	{model} không nhận ảnh tham chiếu: ảnh tham chiếu không được gửi đi.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} nhận {max} ảnh tham chiếu ở đây: {max} ảnh đầu tiên được gửi đi.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} không sửa nội dung trong vùng chọn: nó tô vùng chọn theo mô tả.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} không sửa ảnh theo chỉ dẫn, điều mà Hàng loạt tạo sinh cần: hãy chọn một mô hình làm được việc này, như Gemini, OpenAI hoặc Qwen Image 2.1 Turbo.
+	Keep what is sent and returned	Lưu những gì được gửi đi và trả về
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Ảnh, mặt nạ, ảnh tham chiếu, lời nhắc và kết quả của mỗi lần tô được lưu trong {dir}, mỗi ngày một thư mục (UTC), để so sánh và chẩn đoán.

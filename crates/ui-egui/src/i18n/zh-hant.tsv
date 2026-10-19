@@ -2931,3 +2931,5 @@ curves	Smooth	平滑
 	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} 無法依指示編輯影像，而生成式批次需要此功能：請選擇支援此功能的模型，例如 Gemini、OpenAI 或 Qwen Image 2.1 Turbo。
 	Keep what is sent and returned	保留傳送與傳回的內容
 	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	每次填色的影像、遮色片、參考影像、描述與結果都會儲存在 {dir} 中，每天一個資料夾（UTC），以便比較與診斷。
+	High	高
+	Low	低

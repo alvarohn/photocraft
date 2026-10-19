@@ -4008,3 +4008,52 @@ cameraData	Lens	Lens
 @plural	{n} waiting|{n} waiting	{n} bekliyor
 @plural	{n} failed|{n} failed	{n} başarısız
 @plural	Fill each of the {n} separate areas on its own|Fill each of the {n} separate areas on its own	{n} ayrı alanın her birini ayrı ayrı doldur
+	Sends the same area and prompt to {name} again for {n} more.	{n} tane daha için aynı alanı ve istemi yeniden şuraya gönderir: {name}.
+	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key.	Her Üretken Dolgu, varyasyon başına bir istek gönderir (1 ile 4 arası, iletişim kutusunda seçilir); her biri anahtarınıza faturalandırılır.
+	How many versions to generate. Each one is a request of its own.	Kaç sürüm oluşturulacağı. Her biri ayrı bir istektir.
+	About US${cost} a variation at {w}×{h} (OpenAI's published prices; the images sent are billed too).	{w}×{h} boyutunda varyasyon başına yaklaşık US${cost} (OpenAI'ın yayımladığı fiyatlar; gönderilen görüntüler de faturalandırılır).
+	About US${cost} in all ({n} × US${each}, the provider's published prices).	Toplam yaklaşık US${cost} ({n} × US${each}, sağlayıcının yayımladığı fiyatlar).
+	Default (low)	Varsayılan (düşük)
+	Get an OpenAI API key	OpenAI API anahtarı alın
+	Input fidelity	Girdi doğruluğu
+	OpenAI publishes no price for this quality; see its pricing page.	OpenAI bu kalite için fiyat yayımlamıyor; fiyatlandırma sayfasına bakın.
+	Paste your OpenAI API key	OpenAI API anahtarınızı yapıştırın
+	Quality (compression)	Kalite (sıkıştırma)
+	Very high	Çok yüksek
+	Working resolution	Çalışma çözünürlüğü
+	4K (experimental)	4K (deneysel)
+	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key.	Üretken Dolgu'yu çalıştırana kadar hiçbir şey gönderilmez. Her çalıştırdığınızda PhotoCraft seçili alanı ve çevresindeki görüntüyü, seçimin maskesini ve isteminizi API anahtarınızla OpenAI'a (api.openai.com) gönderir. OpenAI'ın API koşulları ve gizlilik politikası geçerlidir; kullanım anahtarınıza faturalandırılır.
+	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (aslına en sadık düzenlemeler)
+	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (daha hızlı)
+	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (en ucuz)
+	Generative Batch…	Üretken Toplu İşlem…
+	Generative Batch	Üretken Toplu İşlem
+	Start Batch	Toplu İşlemi Başlat
+	{on} of {n} ticked	{on} / {n} işaretli
+	Images	Görüntüler
+	Open documents	Açık belgeler
+	A folder	Bir klasör
+	No folder chosen	Klasör seçilmedi
+	Choose Folder…	Klasör Seçin…
+	What to change in each image	Her görüntüde ne değişecek
+	Each image is edited whole, as Edit selection does with all of it selected.	Her görüntü, tamamı seçiliyken "Seçimi düzenle" modunda olduğu gibi bütün olarak düzenlenir.
+	Same look in all	Tümünde aynı görünüm
+	The first image is edited first; its result goes to the others as their last reference image, with this added to their prompt:	Önce ilk görüntü düzenlenir; sonucu diğerlerine son referans görüntüleri olarak gönderilir ve istemlerine şu eklenir:
+	Results	Sonuçlar
+	JPEG files in an {folder} folder beside each image	Her görüntünün yanındaki {folder} klasöründe JPEG dosyaları
+	Beside each image	Her görüntünün yanına
+	Each image is sent to {name} ({model}) once per variation, with the reference images.	Her görüntü, referans görüntülerle birlikte varyasyon başına bir kez şuraya gönderilir: {name} ({model}).
+	Say what to change in each image.	Her görüntüde neyin değişeceğini belirtin.
+	Generative Batch wrote {n} files to {folder}.	Üretken Toplu İşlem {n} dosyayı şuraya yazdı: {folder}.
+	{n} folders	{n} klasör
+	{n} failed ({error}).	{n} başarısız ({error}).
+	Stopped: {why}	Durduruldu: {why}
+	Generative Batch failed: {error}	Üretken Toplu İşlem başarısız oldu: {error}
+	Generative Batch cancelled; the files already written are kept.	Üretken Toplu İşlem iptal edildi; önceden yazılan dosyalar korunur.
+	Generative AI Settings can only be changed in PhotoCraft itself, not by automation.	Üretken Yapay Zekâ Ayarları yalnızca PhotoCraft'ın kendisinde değiştirilebilir, otomasyonla değiştirilemez.
+	{model} doesn't take reference images: they aren't sent.	{model} referans görüntü kabul etmez: bunlar gönderilmez.
+	{model} takes {max} reference images here: the first {max} are sent.	{model} burada {max} referans görüntü alır: ilk {max} tanesi gönderilir.
+	{model} doesn't edit what is in the selection: it fills the selection from the description.	{model} seçimdekini düzenlemez: seçimi açıklamaya göre doldurur.
+	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} görüntüleri talimatlara göre düzenlemez, Üretken Toplu İşlem ise bunu gerektirir: Gemini, OpenAI veya Qwen Image 2.1 Turbo gibi bunu yapabilen bir model seçin.
+	Keep what is sent and returned	Gönderilenleri ve dönenleri sakla
+	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Her dolgunun görüntüsü, maskesi, referans görüntüleri, istemi ve sonuçları karşılaştırma ve tanılama için {dir} içinde, her gün için ayrı bir klasörde (UTC) kaydedilir.
