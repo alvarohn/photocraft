@@ -110,13 +110,23 @@ impl Session {
 /// The session's generative state.
 #[derive(Default)]
 pub(crate) struct GenState {
-    /// What each generative layer made in this session was generated from.
-    sources: std::collections::HashMap<LayerId, Arc<Source>>,
+    /// What each generative layer made in this session was generated from, by document and
+    /// layer: layer ids are only unique within a document, and a document reopened keeps its
+    /// ids, so a document's entries go when it closes ([`GenState::forget_doc`]).
+    sources: std::collections::HashMap<(DocId, LayerId), Arc<Source>>,
     /// Fills that haven't landed.
     fills: Vec<Fill>,
     next_fill: u64,
     /// Turns at the provider, shared by every fill and Generate More.
     turns: Arc<queue::Turns>,
+}
+
+impl GenState {
+    /// Forget what `doc`'s generative layers were made from: it closed (reopened, its groups are
+    /// ordinary groups, and Generate More is off for them).
+    pub(crate) fn forget_doc(&mut self, doc: DocId) {
+        self.sources.retain(|(d, _), _| *d != doc);
+    }
 }
 
 /// A fill that hasn't landed.
@@ -821,10 +831,17 @@ fn dump(request: &EditRequest, results: &[Vec<u8>], stats: &[String]) {
     {
         let Some(root) = std::env::var_os("PHOTOCRAFT_GENAI_DUMP") else { return };
         let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis());
-        let dir = std::path::Path::new(&root).join(format!("fill-{stamp}"));
-        if std::fs::create_dir_all(&dir).is_err() {
+        let root = std::path::Path::new(&root);
+        if std::fs::create_dir_all(root).is_err() {
             return;
         }
+        // Fills run side by side: two may finish in the same millisecond.
+        let Some(dir) = (1..100).find_map(|n| {
+            let dir = root.join(if n == 1 { format!("fill-{stamp}") } else { format!("fill-{stamp}-{n}") });
+            std::fs::create_dir(&dir).is_ok().then_some(dir)
+        }) else {
+            return;
+        };
         let _ = std::fs::write(dir.join("sent-image.png"), &request.image);
         let _ = std::fs::write(dir.join("sent-mask.png"), &request.mask);
         let _ = std::fs::write(dir.join("prompt.txt"), &request.prompt);
@@ -1005,7 +1022,11 @@ fn land(s: &mut Session, id: u64, placed: Vec<Surface>, source: Source) -> Resul
         let children = placed.iter().enumerate().map(|(i, px)| variation_layer(doc, px, i + 1, i == 0)).collect::<Result<Vec<_>>>()?;
         let ids: Vec<u64> = children.iter().map(|l| l.id.0).collect();
         let mut group = Layer::group(input.name.clone(), children);
-        group.mask = Some(LayerMask { surface: input.sel.clone(), ..LayerMask::reveal_all() });
+        // A pixel mask at the document's depth, as every new mask (a later soft brush stroke
+        // quantizes the same whether the document reopens as PSD or native).
+        let format = input.sel.format().with_sample(doc.depth);
+        let surface = if input.sel.format() == format { input.sel.clone() } else { input.sel.try_convert(format)? };
+        group.mask = Some(LayerMask { surface, ..LayerMask::reveal_all() });
         let above = fill.anchor.filter(|a| doc.layer(*a).is_some()).or(*active);
         let id = doc.insert_above(above, group);
         crate::layer_multi_cmds::check_group_depth(doc, LABEL)?;
@@ -1015,7 +1036,12 @@ fn land(s: &mut Session, id: u64, placed: Vec<Surface>, source: Source) -> Resul
         Ok((id, ids))
     })?;
     let area = source.area;
-    s.genai_state.sources.insert(group, Arc::new(source));
+    // What the group was made from, for Generate More; entries of this document whose group is
+    // gone (deleted, undone) go, so they don't pile up.
+    if let Some(doc) = s.active().map(|st| st.doc.clone()) {
+        s.genai_state.sources.retain(|(d, l), _| *d != fill.doc || doc.layer(*l).is_some());
+    }
+    s.genai_state.sources.insert((fill.doc, group), Arc::new(source));
     Ok(json!({"layer": group.0, "variations": ids, "bounds": [area.x0, area.y0, area.width(), area.height()], "fill": id}))
 }
 
@@ -1090,7 +1116,7 @@ fn generative_target(s: &Session, p: &Value) -> Option<LayerId> {
         Some(id) => LayerId(id),
         None => st.active_layer?,
     };
-    let is_generative = |id: LayerId| s.genai_state.sources.contains_key(&id) && st.doc.layer(id).is_some_and(Layer::is_group);
+    let is_generative = |id: LayerId| s.genai_state.sources.contains_key(&(st.doc.id, id)) && st.doc.layer(id).is_some_and(Layer::is_group);
     if is_generative(id) {
         return Some(id);
     }
@@ -1108,7 +1134,8 @@ impl Session {
 
     /// The prompt a generative layer was made with.
     pub fn generative_prompt(&self, id: LayerId) -> Option<&str> {
-        self.genai_state.sources.get(&id).map(|s| s.prompt.as_str())
+        let doc = self.active()?.doc.id;
+        self.genai_state.sources.get(&(doc, id)).map(|s| s.prompt.as_str())
     }
 }
 
@@ -1148,8 +1175,8 @@ fn more(s: &mut Session, p: &Value) -> Result<Value> {
     more_enabled(s).map_err(bad)?;
     let group = generative_target(s, p).ok_or_else(|| bad("select a generative layer first".into()))?;
     let provider = s.image_provider().cloned().ok_or_else(|| bad("no generative AI provider".into()))?;
-    let source = s.genai_state.sources.get(&group).cloned().ok_or_else(|| bad("select a generative layer first".into()))?;
     let doc = s.active().map(|st| st.doc.id).ok_or(EngineError::NoDocument)?;
+    let source = s.genai_state.sources.get(&(doc, group)).cloned().ok_or_else(|| bad("select a generative layer first".into()))?;
     let turns = Arc::clone(&s.genai_state.turns);
     // Like a fill, it doesn't lock the document: its variations join the group when they come.
     crate::jobs::run_on(

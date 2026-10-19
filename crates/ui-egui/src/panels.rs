@@ -2553,7 +2553,10 @@ fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             // one is a drop zone too.
             let mut drawn: Vec<(LayerId, Rect)> = Vec::new();
             // Where Generative Fills still generating will land.
-            crate::genai_ui::layer_rows_unplaced(app, ui, doc.id, &rows);
+            // One anchored to a row that isn't shown (Isolate Layers, the layer filter) is listed
+            // at the top.
+            let shown: Vec<_> = rows.iter().copied().filter(|&(_, l)| photocraft_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) && filter.shows(l)).collect();
+            crate::genai_ui::layer_rows_unplaced(app, ui, doc.id, &shown);
             for &(depth, l) in &rows {
                 // Select › Isolate Layers.
                 if !photocraft_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) {
