@@ -2,7 +2,7 @@
 //! a set of images, a folder's or the open documents', each result written as a JPEG to an `IA`
 //! folder beside its image (or a folder chosen), whatever the provider. One background job:
 //! cancellable, with its progress in the status bar, sharing the provider's turns with the
-//! fills (at most [`MAX_PARALLEL`] images at once, one for a local server).
+//! fills (at most [`MAX_PARALLEL`] images at once).
 //!
 //! Each image is edited whole: its composite (all visible layers, sRGB) at most 2048 px on its
 //! long side (the provider's working size if smaller) with a mask of all of it, in Edit mode; each
@@ -370,7 +370,7 @@ fn request_for(provider: &dyn ImageProvider, doc: &Document, canvas: Rect, promp
     let mut all = Surface::new(PixelFormat::GRAY8);
     all.fill_rect(canvas, &[1.0]);
     let composite = super::scaled(&super::srgb_composite(doc, canvas)?, canvas, w, h);
-    let (image, mask, _) = super::request_images(&composite, &all, canvas, w, h, EditMode::Edit, 0)?;
+    let (image, mask, _) = super::request_images(&composite, &all, canvas, w, h, EditMode::Edit)?;
     Ok(EditRequest { image, mask, prompt: prompt.to_owned(), size: ImageSize::for_long_side(w.max(h)), mode: EditMode::Edit, references: references.to_vec() })
 }
 

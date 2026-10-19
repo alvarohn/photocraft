@@ -16,7 +16,6 @@
 
 pub mod gemini;
 pub mod openai;
-pub mod sdcpp;
 
 /// Largest response body a provider accepts (a 4K PNG is well under this).
 pub const MAX_RESPONSE: usize = 48 * 1024 * 1024;
@@ -151,14 +150,10 @@ pub struct HttpResponse {
 pub trait HttpTransport: Send + Sync {
     /// Blocking: called from an engine background job, never the UI thread.
     fn post(&self, request: HttpRequest) -> Result<HttpResponse>;
-    /// A GET (`request.body` is ignored), for providers that poll a job; few need it.
-    fn get(&self, _request: HttpRequest) -> Result<HttpResponse> {
-        Err(GenError::Unsupported("this connection"))
-    }
 }
 
 /// What a long request reports while it runs, and how it learns that it should stop. The engine
-/// passes its job's; a provider that waits minutes (a local model) uses it, others ignore it.
+/// passes its job's; a provider that waits minutes (one that polls a job) uses it, others ignore it.
 pub trait Progress: Send + Sync {
     /// How far this request is (0..1), with a short message ("Step 3 of 8").
     fn report(&self, fraction: f32, message: &str);
@@ -327,15 +322,7 @@ pub trait ImageProvider: Send + Sync {
     fn mask_format(&self) -> MaskFormat {
         MaskFormat::Luma
     }
-    /// How far past the selection the mask sent reaches, as a share of the selection's longer
-    /// side (0, the default: the selection only). A local server puts everything outside the mask
-    /// back as it was at every step, so what it draws is cut at the mask's edge; with room, what
-    /// runs past the selection is in the variation, hidden by the group's mask until that is
-    /// painted to show it.
-    fn mask_room(&self) -> f32 {
-        0.0
-    }
-    /// Most requests sent to it at once (a local server works one at a time); `None`: as many as
+    /// Most requests sent to it at once (a server that works one at a time); `None`: as many as
     /// the engine allows.
     fn max_parallel(&self) -> Option<usize> {
         None

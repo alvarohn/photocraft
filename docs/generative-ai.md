@@ -8,19 +8,18 @@ the maintainers asked for in issue #41.
 ## Using it
 
 1. Edit › Preferences › AI Integrations… › Generative AI Settings… (or the ▾ next to the selection
-   tools' Generative Fill… button). Pick a provider (Google Gemini, OpenAI, or a stable-diffusion.cpp
-   server of your own) and model, paste an API key (the local server takes none), set the
+   tools' Generative Fill… button). Pick a provider (Google Gemini or OpenAI) and model, paste an API key, set the
    provider's options, and read what is sent before pressing OK. Each provider
    keeps its own model, options and key, so switching back and forth loses nothing. Set up each
-   provider you want to use once (its key; for the local server, OK once with its address).
+   provider you want to use once (its key).
 2. Make a selection, then Edit › Generative Fill… (or the options bar button). At the top,
    **Provider** and **Model** choose what this fill and the ones after it use, among the
-   providers set up (those with a key saved, the local server once its settings were saved);
+   providers set up (those with a key saved);
    the choice is kept, as if made in Generative AI Settings, and the button beside them opens
    those settings (keys, the server's address, the finer options). When the model chosen won't
-   do something the window asks for, it says so there, in the warning colour: a model that
-   doesn't edit (Z-Image Turbo) runs Edit as Fill, and one that takes no reference images (or
-   fewer) doesn't get them (they stay in the window for next time). The dialog has two modes, as
+   do something the window asks for, it says so there, in the warning colour: one that takes
+   fewer reference images (Gemini 4, OpenAI 15) gets the first ones (all of them stay in the
+   window for next time); one that didn't edit would run Edit as Fill. The dialog has two modes, as
    tabs:
    - **Fill selection** (the default): describe what to put there, or leave the prompt empty to
      continue the surrounding image through it (anything that runs into the selection carries on
@@ -56,9 +55,8 @@ the maintainers asked for in issue #41.
      to an area, retry, cancel).
 
    At most 5 fills talk to the provider at once (each sends one request per variation, and the
-   service limits how many it takes a minute; a local server takes one); the rest wait their
-   turn in order. Each provider has its own turns, so a fill sent to a service doesn't wait for
-   one generating on a local server. A request the service turns
+   service limits how many it takes a minute); the rest wait their turn in order. Each provider
+   has its own turns, so a fill sent to one doesn't wait for the other's. A request the service turns
    down for its rate limit is sent again after 4, 8 and 16 s. The result lands where it was
    started, on its own document, without becoming the active layer, so whatever the user is
    doing meanwhile goes on; it is one undo step of its own, and a later one lands right above the
@@ -80,8 +78,8 @@ the maintainers asked for in issue #41.
 
 5. **File › Automate › Generative Batch…** (once a provider is set up) runs the same edit on many
    images. Provider and Model sit at its top as in the Generative Fill window; the batch needs a
-   model that edits from instructions (Gemini, OpenAI, or a local edit model such as Qwen Image
-   2.1), and with one that doesn't (Z-Image Turbo) the window says so and won't start:
+   model that edits from instructions (Gemini's and OpenAI's all do; with one that didn't, the
+   window would say so and not start):
    - *Images*: the open documents, or a folder's image files; tick which.
    - *What to change*: the prompt (required). Each image is edited whole, as Edit selection does
      with all of it selected; reference images and the number of variations as in the prompt
@@ -97,7 +95,7 @@ the maintainers asked for in issue #41.
 
    Start Batch runs it as one background job: its progress (*3 of 12 images: name*) and Cancel in
    the status bar like any job; files already written stay when it is cancelled. It shares the
-   provider's turns with the fills (up to 5 images at once; one for a local server). An image that
+   provider's turns with the fills (up to 5 images at once). An image that
    fails is reported and the batch goes on, but two failures in a row that the account causes
    (the key, the balance or spending limit, the rate limit after its retries) stop it, as the
    rest would fail too. When it ends, a notice says how many files it wrote, where, and what
@@ -137,105 +135,6 @@ Providers today:
   so they run side by side and a failed one doesn't lose the others; the image sent is billed once
   per variation).
 
-### A local server: stable-diffusion.cpp
-
-**stable-diffusion.cpp (local)** sends fills to an [`sd-server`](https://github.com/leejet/stable-diffusion.cpp/tree/master/examples/server)
-the user runs, usually on the same computer: free, private, no key, and slow (minutes an image on
-a laptop GPU). It speaks the server's native asynchronous API (checked against release
-`master-973-f0aac52`, 2026-10-17, `examples/server/api.md` and `routes_sdcpp.cpp`):
-
-- `POST /sdcpp/v1/img_gen` queues a job: `init_image` (the image sent), `mask_image` (its mask;
-  white = regenerate), `width`/`height` (the working size), `strength`, `seed: -1` (a new seed
-  per variation: the server's default, 42, would make them all the same), `sample_params`
-  (steps, `guidance.txt_cfg`, sampler, and for Qwen Image 2.1 Turbo its 8-step `custom_sigmas`,
-  which a request can't name by preset), `preview: "proj"` (the cheapest preview: the only
-  progress the API gives) and, for a model that edits from instructions, `ref_images` (the image
-  sent, then the user's references). Images are base64 PNG or JPEG.
-- `GET /sdcpp/v1/jobs/{id}` is polled every second: its place in the server's queue, then the
-  sampling step (`preview.step` of `total_steps`), shown on the fill's tag as a percentage, then
-  the result (`result.images[0].b64_json`). No call stays open for minutes, so no timeout cuts a
-  slow image short; a few failed polls in a row are tolerated.
-- Cancel withdraws a job still waiting (`POST /sdcpp/v1/jobs/{id}/cancel`). The server can't stop
-  one already generating: PhotoCraft lets go of it at once, the server finishes it, and the next
-  request waits behind it.
-
-The server works one job at a time, so PhotoCraft sends it one request at a time: a fill's
-variations go one after another and other fills wait their turn (at most one at the provider).
-The default is 1 variation. The image goes at the **working size** (Generative AI Settings: 256 to
-2048 px on the long side, 512 by default, both sides multiples of 32 as Qwen Image 2.1 needs) and
-the result is scaled back up to the area, so a large selection comes back soft: raise the working
-size if the machine can take it.
-
-Settings: the server's address (default `http://127.0.0.1:1234`, `sd-server`'s own; `http` or
-`https`, a host, a port and a path, nothing else), the model it runs (a preset), steps and
-guidance (0: the server's own `--steps` and `--cfg-scale`), Fill strength and the working size.
-
-| Preset | What it does | Fill | Edit, references, Batch | Licence |
-|---|---|---|---|---|
-| Z-Image Turbo | text to image; inpaints through the mask | yes, from a description (an empty prompt continues the image) | no | Apache 2.0 |
-| Qwen Image 2.1 Turbo | edits from instructions, with reference images | yes | yes | Qwen Research: non-commercial use only (the settings say so) |
-| Other model | whatever the server runs; tick *It edits from instructions…* for an edit model (Qwen Image Edit, Flux Kontext) | yes | if ticked | the model's |
-
-**What Fill sends to a local model, and why.** The same as to Gemini: the image with the selection
-blurred out (the dimmed placeholder) and the mask. stable-diffusion.cpp inpaints any model by
-blending latents: at every step the area outside the mask is put back from the image sent, and
-inside it the model generates (`src/pipeline/diffusion_engine.cpp`, `denoised * mask + init *
-(1 - mask)`). At Fill strength 100% (the default) the masked area starts from pure noise, so what
-the image shows there doesn't reach the result through the latents. It still matters twice: below
-100% the area starts from the image's own pixels there, and an object left in them comes back
-(the placeholder makes removal work, as with Gemini); and a model that edits from instructions
-gets the image as a reference too, and would see (and copy back) what was there. So Fill sends
-the placeholder, and Edit the selection as it is. This is from reading the server's code; it
-couldn't be measured against a real model here (the models' hosts aren't reachable from the
-cloud build), so the strength setting is there to tune it.
-
-The mask is black and white; the server rounds it at 50% and widens it to its 8-pixel latent grid.
-At every step it puts everything outside the mask back as it was (`denoised = denoised × mask +
-original × (1 − mask)`, `diffusion_engine.cpp`), so a model that isn't made for filling holes (Z-Image
-Turbo) can't draw past it: an object larger than the selection comes out cut at its edge (a rubber
-duck without its head and feet, in the first run on the owner's PC). **Room past the selection**
-(0% by default) sends a mask that reaches that far past it, as a share of the selection's longer
-side: what the model draws there lands in the variation, hidden by the group's mask, and painting
-that mask shows it. At 0% the model sees the original right up to the selection's edge, which
-matches the edges best; with room, the ring around it is drawn anew and may not match the
-original outside it.
-
-Running `sd-server` (from stable-diffusion.cpp's releases; Vulkan builds run on most GPUs). Which
-device runs each part (the text encoder `te`, the diffusion model and the VAE) and any other option
-go in this command, since PhotoCraft doesn't start the server, and each model and card wants its own
-split. These are the ones that worked on a 2 GB GTX 1050 (Windows, Vulkan, NVIDIA driver 582.78,
-stable-diffusion.cpp master-973-f0aac52, 18 October 2026, 512×512 and 8 steps); `Vulkan1` is that
-card's number on that PC, another PC may number it differently:
-
-```text
-sd-server --listen-port 1234 --diffusion-model z_image_turbo-Q3_K.gguf --llm Qwen3-4B-Instruct-2507-Q4_K_M.gguf ^
-  --vae ae.safetensors --cfg-scale 1.0 --steps 8 ^
-  --backend Vulkan1 --offload-to-cpu --vae-tiling -v
-
-sd-server --listen-port 1234 --diffusion-model <Qwen Image 2.1 Turbo>.gguf --llm Qwen3VL-8B-Instruct-Q4_K_M.gguf ^
-  --llm_vision mmproj-Qwen3VL-8B-Instruct-F16.gguf --vae qwen_image_2.1_vae_bf16.safetensors ^
-  --sigmas qwen-image-2.1-turbo --steps 8 --cfg-scale 1.0 --sampling-method euler ^
-  --backend "te=Vulkan1,diffusion=Vulkan1,vae=CPU" --vae-tiling --max-vram 1.0 --mmap ^
-  --model-args qwen_image_2_1_prefix_cache=false -v
-```
-
-| On the GTX 1050 | Total | Per step | VAE |
-|---|---|---|---|
-| Z-Image Turbo | 3.8 min | 23 s | 11 s, on the card |
-| Qwen Image 2.1 Turbo | 5.9 min | 23 s | 149 s, on the processor with tiling (73 s without it, in a processor-only run) |
-
-On the processor alone they took 9.3 and 11 minutes. For Qwen Image 2.1 on that card, leave out
-`--offload-to-cpu`: with it, and also with `--max-vram 1.5`, the card runs out of memory
-(`ErrorOutOfDeviceMemory`). Its VAE (`wan_vae`) on the card's Vulkan driver crashes the driver
-(an access violation, 0xC0000005, in `nvoglv64.dll`, as it starts decoding the tiles), hence
-`vae=CPU`.
-
-`--llm_vision` (the text encoder's vision weights) is what lets Qwen Image 2.1 read reference
-images. With the Qwen Image 2.1 Turbo preset PhotoCraft always sends the image as a reference, so
-a server started without it fails every fill ("Qwen Image 2.1 editing requires Qwen3-VL vision
-weights"); to use such a server as a plain inpainter, pick *Other model* with *It edits from
-instructions* unticked (and set its steps to 8, guidance to 1).
-
 ## What is sent
 
 Only when Generative Fill or Generate More runs, and only to the configured provider, once per
@@ -251,8 +150,7 @@ variation (1 to 4, three by default, each billed to the user's key). In Fill:
   what is being replaced, as Photoshop's fill doesn't, so it can't paint it back: an empty prompt
   removes what was selected and continues the surroundings, including anything that crosses the
   selection's edge. (A flat grey hole was tried first; Gemini drew it in as a grey box or a lamp.);
-- a PNG mask of the selection at the same size: black and white (white = fill) for Gemini and
-  stable-diffusion.cpp;
+- a PNG mask of the selection at the same size: black and white (white = fill) for Gemini;
   for OpenAI, which takes a real mask, transparent wherever any of the selection is (OpenAI edits
   where the mask's alpha is zero) and opaque elsewhere;
 - the prompt.
@@ -302,9 +200,6 @@ request (`PHOTOCRAFT_LIVE_REPLAY`). Gemini returns JPEG (its only output format)
 
 ## Keys and privacy
 
-- A local stable-diffusion.cpp server gets no key and no credential is read for it. Its
-  transport alone allows plain HTTP (it is this computer or one on the local network) and skips
-  any system proxy; the cloud providers' stays HTTPS only.
 - Keys live in the OS credential store: the macOS Keychain, Windows Credential Manager. On Linux
   and the BSDs a key stays in process memory and is asked for again after a restart; it is never
   written to a file.
@@ -347,7 +242,7 @@ before.
 
 | Where | What |
 |---|---|
-| `crates/genai` | `ImageProvider` (generate, edit with mask in Fill or Edit mode with reference images, variations; capabilities, including `edit_in_place` and `max_references`; output shape, working size, mask form, how many requests at once, default number of variations, cost estimate, progress), `HttpTransport` (the network seam: POST, and GET for polling), `ApiKey`, `Multipart`, and the backends: `gemini.rs`, `openai.rs`, `sdcpp.rs` (a local stable-diffusion.cpp server). No network code: it builds for wasm and its tests use a fake transport. |
+| `crates/genai` | `ImageProvider` (generate, edit with mask in Fill or Edit mode with reference images, variations; capabilities, including `edit_in_place` and `max_references`; output shape, working size, mask form, how many requests at once, default number of variations, cost estimate, progress), `HttpTransport` (the network seam: POST), `ApiKey`, `Multipart`, and the backends: `gemini.rs`, `openai.rs`. No network code: it builds for wasm and its tests use a fake transport. |
 | `crates/engine/src/genai_cmds.rs` | `edit.generativeFill`, `layer.generative.selectVariation`, `layer.generative.more`, `.retry`, `.discard`, `.fills`, `.areas`: context area, pixel interchange (after #730's approach), reference images (`reference_image`), the job, the masked group of variations, the fills that haven't landed (`GenState`). `Session::set_image_provider` installs a provider. |
 | `crates/engine/src/genai_cmds/batch.rs` | `edit.generativeBatch`: the images, one job, Same look, the account-failure stop, the JPEGs written. |
 | `crates/engine/src/genai_cmds/queue.rs` | Turns at the provider (at most 5 fills at once, in order) and the pauses after a rate-limit answer. |
@@ -357,7 +252,7 @@ before.
 | `crates/ui-egui/src/genai_ui/batch.rs` | File › Automate › Generative Batch…: the dialog, and the notice when a batch ends. |
 | `crates/ui-egui/src/genai_ui/providers.rs` | The providers the settings offer and each one's rows (model, key, options), notes and what is sent; preferences `{"provider", "model", "options": {<provider>: {…}}}`. |
 | `crates/ui-egui/src/genai_ui/pending.rs` | Fills in progress: the canvas shimmer, outline and tags, the Layers panel's "Generating…" rows, the status bar's readout and list, the flash when one lands. |
-| `apps/photocraft/src/genai.rs` | The desktop `GenAiServices`: credential store (`keyring`), HTTPS transport (`ureq` + rustls; 3 minutes for Gemini, 10 for OpenAI), the local server's transport (plain HTTP allowed, no proxy, short calls) and `build`, which makes a provider from its id, model, options and key (none for the local server). |
+| `apps/photocraft/src/genai.rs` | The desktop `GenAiServices`: credential store (`keyring`), HTTPS transport (`ureq` + rustls; 3 minutes for Gemini, 10 for OpenAI) and `build`, which makes a provider from its id, model, options and key. |
 
 ### Adding a provider
 

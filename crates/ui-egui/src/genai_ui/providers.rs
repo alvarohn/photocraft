@@ -4,31 +4,20 @@
 //! `ui.generativeAiSettings`: `{"provider", "model", "options": {<provider>: {…}}}`); keys only in
 //! the credential store.
 
-use photocraft_genai::{gemini, openai, sdcpp};
+use photocraft_genai::{gemini, openai};
 use serde_json::{Map, Value, json};
 
 use crate::PhotocraftApp;
 
 /// Providers the settings offer: (id, name). Only providers the app can build appear.
 pub(super) fn list() -> Vec<(String, &'static str)> {
-    vec![
-        (String::new(), tl!("None")),
-        (gemini::ID.into(), gemini::NAME),
-        (openai::ID.into(), openai::NAME),
-        (sdcpp::ID.into(), tl!("stable-diffusion.cpp (local)")),
-    ]
+    vec![(String::new(), tl!("None")), (gemini::ID.into(), gemini::NAME), (openai::ID.into(), openai::NAME)]
 }
 
-/// Does `provider` need an API key? A local server takes none.
-pub fn needs_key(provider: &str) -> bool {
-    provider != sdcpp::ID
-}
-
-/// `provider`'s models (for the local server: what model it runs), best default first.
+/// `provider`'s models, best default first.
 fn models(provider: &str) -> &'static [(&'static str, &'static str)] {
     match provider {
         openai::ID => openai::MODELS,
-        sdcpp::ID => sdcpp::PRESETS,
         _ => gemini::MODELS,
     }
 }
@@ -41,7 +30,6 @@ pub(super) fn model_list(provider: &str) -> Vec<(String, &'static str)> {
 pub(super) fn default_model(provider: &str) -> &'static str {
     match provider {
         openai::ID => openai::DEFAULT_MODEL,
-        sdcpp::ID => sdcpp::DEFAULT_PRESET,
         _ => gemini::DEFAULT_MODEL,
     }
 }
@@ -61,11 +49,6 @@ pub(super) fn saved_options(app: &PhotocraftApp, provider: &str) -> Value {
     v.filter(|v| v.is_object()).cloned().unwrap_or_else(|| json!({}))
 }
 
-/// Were `provider`'s settings ever saved (for the local server: its address)?
-pub(super) fn has_saved_options(app: &PhotocraftApp, provider: &str) -> bool {
-    app.session.prefs().dialogs.get(super::PREF).and_then(|v| v.get("options")).and_then(|o| o.get(provider)).is_some_and(Value::is_object)
-}
-
 /// The model saved for `provider`: the current one if it is the chosen provider, else the one it
 /// had when last chosen, else its default.
 pub(super) fn saved_model(app: &PhotocraftApp, provider: &str) -> String {
@@ -83,6 +66,15 @@ pub(super) fn saved_model(app: &PhotocraftApp, provider: &str) -> String {
 pub(super) fn remembered(app: &PhotocraftApp, provider: &str, model: &str, options: &Value) -> Value {
     let keep = super::keeps(app);
     let mut all = app.session.prefs().dialogs.get(super::PREF).and_then(|v| v.get("options")).and_then(Value::as_object).cloned().unwrap_or_default();
+    // The provider in use until now keeps its model for switching back: settings saved before each
+    // provider kept its own options held only the one in use.
+    let (current, current_model) = super::saved(app);
+    if !current.is_empty() && current != provider && !current_model.is_empty() {
+        let entry = all.entry(current).or_insert_with(|| json!({}));
+        if let Some(o) = entry.as_object_mut() {
+            o.insert("model".into(), json!(current_model));
+        }
+    }
     if !provider.is_empty() {
         let mut o = options.as_object().cloned().unwrap_or_default();
         o.insert("model".into(), json!(model));
@@ -93,7 +85,7 @@ pub(super) fn remembered(app: &PhotocraftApp, provider: &str, model: &str, optio
 
 /// Fill the dialog's fields for `provider` (on open, and when another provider is picked).
 pub(super) fn load_fields(app: &PhotocraftApp, f: &mut Map<String, Value>, provider: &str) {
-    let has_key = needs_key(provider) && app.services.genai.as_ref().and_then(|s| (s.load_key)(provider).ok().flatten()).is_some();
+    let has_key = app.services.genai.as_ref().and_then(|s| (s.load_key)(provider).ok().flatten()).is_some();
     f.insert("provider".into(), json!(provider));
     f.insert("model".into(), json!(saved_model(app, provider)));
     f.insert("options".into(), saved_options(app, provider));
@@ -136,13 +128,9 @@ pub(super) fn rows(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &mut Map<Strin
         f.insert("model".into(), json!(model));
     }
     ui.end_row();
-    if needs_key(provider) {
-        key_row(app, ui, f, provider);
-    }
-    match provider {
-        openai::ID => openai_rows(ui, f, &model),
-        sdcpp::ID => sdcpp_rows(ui, f, &model),
-        _ => {}
+    key_row(app, ui, f, provider);
+    if provider == openai::ID {
+        openai_rows(ui, f, &model);
     }
 }
 
@@ -219,73 +207,6 @@ fn openai_rows(ui: &mut egui::Ui, f: &mut Map<String, Value>, model: &str) {
     }
 }
 
-fn sdcpp_rows(ui: &mut egui::Ui, f: &mut Map<String, Value>, preset: &str) {
-    let mut v = f.get("options").cloned().unwrap_or(Value::Null);
-    if let Some(o) = v.as_object_mut() {
-        o.insert("preset".into(), json!(preset));
-    }
-    let o = sdcpp::Options::from_json(&v);
-    ui.label(tl!("Server address"));
-    let mut url = opt(f, "url").and_then(Value::as_str).unwrap_or(sdcpp::DEFAULT_URL).to_owned();
-    let r = ui.add(egui::TextEdit::singleline(&mut url).hint_text(sdcpp::DEFAULT_URL).desired_width(220.0));
-    crate::field_tab::register(ui.ctx(), r.id);
-    if r.changed() {
-        set_opt(f, "url", json!(url));
-    }
-    ui.end_row();
-    ui.label(tl!("Steps"));
-    let mut steps = o.steps as f32;
-    if crate::widgets::value_field(ui, &mut steps, 0.0..=100.0, "", 64.0).on_hover_text(tl!("0: the server's own setting")).changed() {
-        set_opt(f, "steps", json!(steps.round().clamp(0.0, 100.0) as u64));
-    }
-    ui.end_row();
-    ui.label(tl!("Guidance (CFG)"));
-    let mut cfg = o.cfg.unwrap_or(0.0);
-    if crate::widgets::value_field_prec(ui, &mut cfg, 0.0..=30.0, "", 64.0, 1).on_hover_text(tl!("0: the server's own setting")).changed() {
-        set_opt(f, "cfg", if cfg > 0.0 { json!(cfg) } else { Value::Null });
-    }
-    ui.end_row();
-    ui.label(tl!("Fill strength"));
-    let mut strength = o.strength * 100.0;
-    if crate::widgets::value_field(ui, &mut strength, 5.0..=100.0, "%", 64.0)
-        .on_hover_text(tl!("How much of the selected area Fill makes anew; 100%: all of it"))
-        .changed()
-    {
-        set_opt(f, "strength", json!((strength / 100.0).clamp(0.05, 1.0)));
-    }
-    ui.end_row();
-    ui.label(tl!("Room past the selection"));
-    let mut room = o.room * 100.0;
-    if crate::widgets::value_field(ui, &mut room, 0.0..=100.0, "%", 64.0)
-        .on_hover_text(tl!(
-            "How far past the selection the model may draw, as a share of the selection's size: what it draws there is in the layer, hidden by its mask (paint the mask to show it). 0%: only inside the selection, which matches its edges best."
-        ))
-        .changed()
-    {
-        set_opt(f, "room", json!((room / 100.0).clamp(0.0, 1.0)));
-    }
-    ui.end_row();
-    ui.label(tl!("Working size"));
-    let mut side = o.work_side;
-    let sides: Vec<(u32, String)> = [256u32, 384, 512, 640, 768, 1024, 1536, 2048].iter().map(|s| (*s, format!("{s} px"))).collect();
-    if !sides.iter().any(|(s, _)| *s == side) {
-        side = sdcpp::DEFAULT_SIDE;
-    }
-    let labels: Vec<(u32, &str)> = sides.iter().map(|(s, l)| (*s, l.as_str())).collect();
-    if crate::widgets::dropdown_literal(ui, "genai-sdcpp-side", &mut side, &labels, 220.0) {
-        set_opt(f, "workSide", json!(side));
-    }
-    ui.end_row();
-    if preset == "other" {
-        ui.label("");
-        let mut on = o.instructions;
-        if crate::widgets::checkbox(ui, &mut on, tl!("It edits from instructions and takes reference images")).changed() {
-            set_opt(f, "instructions", json!(on));
-        }
-        ui.end_row();
-    }
-}
-
 /// The notes under the grid: where to get a key, the model's licence, what is sent and to whom.
 pub(super) fn notes(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &Map<String, Value>, provider: &str) {
     if provider.is_empty() {
@@ -297,30 +218,6 @@ pub(super) fn notes(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &Map<String, 
         ui.add_space(4.0);
         if ui.link(label).clicked() {
             crate::links::open(app, &ui.ctx().clone(), url);
-        }
-    }
-    if provider == sdcpp::ID {
-        ui.add_space(4.0);
-        faint(
-            ui,
-            tl!(
-                "Start sd-server with the model first; PhotoCraft sends it one request at a time. Each image takes as long as the server needs (minutes on a laptop), at the working size, scaled up to the selection."
-            ),
-        );
-        match model.as_str() {
-            "qwen-image-2.1-turbo" => {
-                ui.add_space(4.0);
-                ui.label(
-                    egui::RichText::new(tl!("Qwen Image 2.1 Turbo is released under the Qwen Research licence: for non-commercial use only."))
-                        .color(t.warning)
-                        .size(12.0),
-                );
-            }
-            "z-image-turbo" => {
-                ui.add_space(4.0);
-                faint(ui, tl!("Z-Image Turbo (Apache 2.0) fills selections from a description; it doesn't edit from instructions or take reference images."));
-            }
-            _ => {}
         }
     }
     if provider == openai::ID {
@@ -342,40 +239,24 @@ pub(super) fn notes(app: &mut PhotocraftApp, ui: &mut egui::Ui, f: &Map<String, 
     ui.label(egui::RichText::new(tl!("What is sent, and to whom")).font(crate::theme::semibold(12.5)).color(t.text));
     ui.add_space(2.0);
     match provider {
-        gemini::ID => faint(
-            ui,
-            tl!(
-                "Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark."
-            ),
-        ),
         openai::ID => faint(
             ui,
             tl!(
                 "Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a mask of the selection, and your prompt to OpenAI (api.openai.com) with your API key. OpenAI's API terms and privacy policy apply, and its usage is billed to your key."
             ),
         ),
-        _ => {
-            let url = f.get("options").and_then(|o| o.get("url")).and_then(Value::as_str).unwrap_or(sdcpp::DEFAULT_URL).to_owned();
-            faint(
-                ui,
-                &crate::i18n::fmt(
-                    tl!(
-                        "Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to the stable-diffusion.cpp server at {url}, without a key. At 127.0.0.1 (this computer) nothing leaves it."
-                    ),
-                    &[("url", &url)],
-                ),
-            );
-        }
+        _ => faint(
+            ui,
+            tl!(
+                "Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to Google (generativelanguage.googleapis.com) with your API key. Google's Gemini API terms and privacy policy apply, and its usage is billed to your key. Results carry Google's SynthID watermark."
+            ),
+        ),
     }
     ui.add_space(4.0);
     faint(ui, tl!("In Edit mode the selected area is sent as it is. Reference images you add are sent too."));
     ui.add_space(4.0);
-    if needs_key(provider) {
-        faint(ui, tl!("Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key."));
-        ui.add_space(4.0);
-        let store = app.services.genai.as_ref().map_or("", |s| s.key_store_name);
-        faint(ui, &crate::i18n::fmt(tl!("Your key is kept in {store}, never in PhotoCraft's settings files."), &[("store", tl!(store))]));
-    } else {
-        faint(ui, tl!("Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), one after another."));
-    }
+    faint(ui, tl!("Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), each billed to your key."));
+    ui.add_space(4.0);
+    let store = app.services.genai.as_ref().map_or("", |s| s.key_store_name);
+    faint(ui, &crate::i18n::fmt(tl!("Your key is kept in {store}, never in PhotoCraft's settings files."), &[("store", tl!(store))]));
 }

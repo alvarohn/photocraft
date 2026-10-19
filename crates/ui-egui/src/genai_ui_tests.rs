@@ -21,17 +21,15 @@ struct Fake {
 
 impl ImageProvider for Fake {
     fn info(&self) -> ProviderInfo {
-        let name = match self.id {
-            "openai" => "OpenAI",
-            "sdcpp" => "stable-diffusion.cpp (local)",
-            _ => "Google Gemini",
-        };
+        let name = if self.id == "openai" { "OpenAI" } else { "Google Gemini" };
         ProviderInfo { id: self.id, name, model: self.model.clone(), host: "example.invalid" }
     }
     fn capabilities(&self) -> Capabilities {
-        // Z-Image Turbo fills from a description only, as the real preset.
-        let edits = self.model != "z-image-turbo";
-        Capabilities { generate: false, edit: true, variations: false, edit_in_place: edits, max_references: if edits { 4 } else { 0 } }
+        // As the real ones: OpenAI takes 15 reference images, Gemini 4. A model named
+        // `fills-only` (none is) fills from a description only, for the window's notes.
+        let edits = self.model != "fills-only";
+        let refs = if self.id == "openai" { 15 } else { 4 };
+        Capabilities { generate: false, edit: true, variations: false, edit_in_place: edits, max_references: if edits { refs } else { 0 } }
     }
     fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
         let (w, h) = photocraft_genai::png_size(&r.image).unwrap();
@@ -57,15 +55,8 @@ fn services(store: &Store) -> GenAiServices {
             Ok(())
         }),
         provider: Box::new(|id, model, _options, key: Option<ApiKey>| {
-            let id = match id {
-                "openai" => "openai",
-                "sdcpp" => "sdcpp",
-                _ => "gemini",
-            };
-            match key {
-                Some(key) => assert_eq!(key.expose(), SECRET),
-                None => assert_eq!(id, "sdcpp", "a provider that takes a key is never built without one"),
-            }
+            let id = if id == "openai" { "openai" } else { "gemini" };
+            assert_eq!(key.expect("a provider is never built without its key").expose(), SECRET);
             Ok(Arc::new(Fake { id, model: model.into() }))
         }),
         key_store_name: "the test store",
@@ -172,16 +163,16 @@ fn keys_stay_with_their_provider_and_automation_cannot_change_the_settings() {
     assert!(app.genai.key_input.is_empty());
 
     // Through the control channel (a session gate installed): refused, nothing kept.
+    store.borrow_mut().insert("openai".into(), SECRET.into());
     let id = open_settings(&mut app);
-    pick_provider(&mut app, id, "sdcpp");
-    app.ui.dialog_mut(id).unwrap().fields.insert("options".into(), json!({"url": "http://203.0.113.9:1234"}));
+    pick_provider(&mut app, id, "openai");
     let before = app.session.prefs().dialogs.get(PREF).cloned();
     app.session.authorize = Some(|_, _| Ok(()));
     let e = crate::dialogs::confirm(&mut app, id).unwrap_err();
     assert!(e.contains("automation"), "{e}");
     app.session.authorize = None;
     assert_eq!(app.session.prefs().dialogs.get(PREF).cloned(), before);
-    assert!(app.session.image_provider().map(|p| p.info().id) != Some("sdcpp"));
+    assert!(app.session.image_provider().is_none());
 }
 
 /// OpenAI has its own model, options and key; going back to Gemini finds Gemini's as they were.
@@ -445,55 +436,6 @@ fn the_dialogs_render() {
     h.get_by_label("Generative Fill…");
     if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-options-bar.png")).unwrap();
-    }
-}
-
-/// A local stable-diffusion.cpp server takes no key: OK keeps its model and options and installs
-/// it without storing anything in the credential store; a launch restores it the same way.
-#[test]
-fn a_local_server_needs_no_key() {
-    let store = Store::default();
-    let mut app = app_with(&store);
-    let id = open_settings(&mut app);
-    pick_provider(&mut app, id, "sdcpp");
-    assert_eq!(fields(&app, id)["model"], photocraft_genai::sdcpp::DEFAULT_PRESET);
-    assert_eq!(fields(&app, id)["hasKey"], false);
-    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
-    f.insert("model".into(), json!("qwen-image-2.1-turbo"));
-    f.insert("options".into(), json!({"url": "http://127.0.0.1:1234", "workSide": 768}));
-    app.genai.key_input = "typed by mistake".into();
-    let r = crate::dialogs::confirm(&mut app, id).unwrap();
-    assert_eq!(r["ready"], true);
-    assert!(store.borrow().is_empty(), "no key is stored for it");
-    assert_eq!(app.session.image_provider().unwrap().info().id, "sdcpp");
-    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["options"]["sdcpp"]["workSide"], 768);
-    let mut next = PhotocraftApp::new(Session::new(), Services { genai: Some(services(&store)), ..Default::default() });
-    next.session.prefs.edit(|p| p.dialogs = app.session.prefs().dialogs.clone());
-    restore(&mut next).unwrap();
-    assert_eq!(next.session.image_provider().unwrap().info().id, "sdcpp");
-}
-
-/// Renders the local server's settings with Qwen Image 2.1 Turbo, whose licence note shows
-/// (`GENAI_SNAPSHOT_DIR=… cargo test` saves a look).
-#[test]
-fn local_server_settings_render() {
-    let store = Store::default();
-    let store2 = store.clone();
-    let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
-        PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = app_with(&store2);
-        let id = open_settings(&mut app);
-        pick_provider(&mut app, id, "sdcpp");
-        app.ui.dialog_mut(id).unwrap().fields.insert("model".into(), json!("qwen-image-2.1-turbo"));
-        app
-    });
-    h.run_steps(6);
-    h.get_by_label("Server address");
-    h.get_by_label("Working size");
-    h.get_by_label("Qwen Image 2.1 Turbo is released under the Qwen Research licence: for non-commercial use only.");
-    assert!(h.query_by_label("API key").is_none(), "no key for a local server");
-    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
-        img.save(std::path::Path::new(&dir).join("genai-settings-local.png")).unwrap();
     }
 }
 
@@ -942,60 +884,81 @@ fn a_tags_cancel_takes_the_click_from_the_canvas() {
     h.state_mut().session.cancel_all_jobs();
 }
 
-/// Gemini (its key saved) in use, and the local server set up once in Settings.
-fn two_providers(store: &Store) -> PhotocraftApp {
+/// Gemini (its key saved) in use, with a selection.
+fn gemini_ready(store: &Store) -> PhotocraftApp {
     let mut app = prompt_ready(store);
-    let id = open_settings(&mut app);
-    pick_provider(&mut app, id, "sdcpp");
-    crate::dialogs::confirm(&mut app, id).unwrap();
-    switch_provider(&mut app, "gemini", "m").unwrap();
     app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
     app
 }
 
-/// The Generative Fill window chooses the provider and model among those set up, for every fill
-/// to come (kept as the settings' choice, each provider's options as they were), and says there
-/// what the model won't do of what was asked; automation can't choose.
+/// The Generative Fill window chooses the provider and model among those set up (a key saved),
+/// for every fill to come (kept as the settings' choice, each provider's options as they were),
+/// and says there what the model won't do of what was asked; automation can't choose.
 #[test]
 fn the_fill_window_chooses_the_provider_and_model() {
     let store = Store::default();
-    let mut app = two_providers(&store);
-    let id = open_prompt_dialog(&mut app);
-    assert_eq!(app.genai.configured, ["gemini", "sdcpp"], "OpenAI has no key yet: not offered");
-    let doc = app.session.active().unwrap().doc.id.0;
-    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
-    f.insert("mode".into(), json!("edit"));
-    f.insert("prompt".into(), json!("a red boat"));
-    f.insert("references".into(), json!([{"document": doc}]));
-
-    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
-    let p = app.session.image_provider().unwrap().info();
-    assert_eq!((p.id, p.model.as_str()), ("sdcpp", "z-image-turbo"));
-    let pref = app.session.prefs().dialogs.get(PREF).unwrap().clone();
-    assert_eq!((pref["provider"].as_str(), pref["model"].as_str()), (Some("sdcpp"), Some("z-image-turbo")));
-    assert_eq!(pref["options"]["gemini"]["model"], "m", "Gemini's model is kept for switching back");
-    // Z-Image Turbo doesn't edit or take references: the fill fills, sends none, and the window
-    // keeps them for next time.
-    crate::dialogs::confirm(&mut app, id).unwrap();
-    let sent = last_fill(&app);
-    assert_eq!(sent["mode"], "fill");
-    assert!(sent.get("references").is_none(), "{sent}");
-    assert_eq!(app.genai.references, [json!({"document": doc})]);
-
+    let mut app = gemini_ready(&store);
+    open_prompt_dialog(&mut app);
+    assert_eq!(app.genai.configured, ["gemini"], "OpenAI has no key yet: not offered");
     // A key saved for OpenAI since: offered the next time the window opens.
     store.borrow_mut().insert("openai".into(), SECRET.into());
-    app.run("select.rect", json!({"x": 8, "y": 8, "width": 16, "height": 16})).unwrap();
-    open_prompt_dialog(&mut app);
-    assert_eq!(app.genai.configured, ["gemini", "openai", "sdcpp"]);
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(app.genai.configured, ["gemini"], "the window was open: the list is from when it opened");
+    crate::dialogs::cancel(&mut app, id).unwrap();
+    let id = open_prompt_dialog(&mut app);
+    assert_eq!(app.genai.configured, ["gemini", "openai"]);
+
+    switch_provider(&mut app, "openai", "gpt-image-2").unwrap();
+    let p = app.session.image_provider().unwrap().info();
+    assert_eq!((p.id, p.model.as_str()), ("openai", "gpt-image-2"));
+    let pref = app.session.prefs().dialogs.get(PREF).unwrap().clone();
+    assert_eq!((pref["provider"].as_str(), pref["model"].as_str()), (Some("openai"), Some("gpt-image-2")));
+    assert_eq!(pref["options"]["gemini"]["model"], "m", "Gemini's model is kept for switching back");
+
+    // Six references with OpenAI (it takes 15), then Gemini (4): the first 4 are sent, and the
+    // window keeps all six for next time.
+    let doc = app.session.active().unwrap().doc.id.0;
+    let dir = std::env::temp_dir().join(format!("photocraft-genai-refs-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut refs = vec![json!({"document": doc})];
+    for i in 0..5 {
+        let path = dir.join(format!("ref-{i}.png"));
+        let px = photocraft_codecs::Image::from_u8(4, 4, photocraft_codecs::ChannelLayout::Rgba, vec![200; 64]).unwrap();
+        std::fs::write(&path, photocraft_codecs::encode(&px, photocraft_codecs::Format::Png, &Default::default()).unwrap()).unwrap();
+        refs.push(json!({"path": path.to_string_lossy()}));
+    }
+    let f = &mut app.ui.dialog_mut(id).unwrap().fields;
+    f.insert("prompt".into(), json!("a red boat"));
+    f.insert("references".into(), Value::Array(refs.clone()));
+    switch_provider(&mut app, "gemini", "m").unwrap();
+    crate::dialogs::confirm(&mut app, id).unwrap();
+    assert_eq!(last_fill(&app)["references"].as_array().unwrap().len(), 4);
+    assert_eq!(app.genai.references, refs);
+    let _ = std::fs::remove_dir_all(dir);
 
     // Not from automation; a provider that can't be built leaves the one in use.
     app.automation_input = true;
-    assert!(switch_provider(&mut app, "gemini", "m").unwrap_err().contains("automation"));
+    assert!(switch_provider(&mut app, "openai", "gpt-image-2").unwrap_err().contains("automation"));
     app.automation_input = false;
-    store.borrow_mut().remove("gemini");
-    assert!(switch_provider(&mut app, "gemini", "m").is_err());
-    assert_eq!(app.session.image_provider().unwrap().info().id, "sdcpp");
-    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["provider"], "sdcpp");
+    store.borrow_mut().remove("openai");
+    assert!(switch_provider(&mut app, "openai", "gpt-image-2").is_err());
+    assert_eq!(app.session.image_provider().unwrap().info().id, "gemini");
+    assert_eq!(app.session.prefs().dialogs.get(PREF).unwrap()["provider"], "gemini");
+}
+
+/// A provider saved by an earlier build that no longer offers it (the local server some test
+/// builds had) reads as none: off, no error, and the settings open on Gemini.
+#[test]
+fn a_provider_no_longer_offered_reads_as_none() {
+    let store = Store::default();
+    store.borrow_mut().insert("gemini".into(), SECRET.into());
+    let mut app = app_with(&store);
+    app.session.prefs.edit(|p| p.dialogs.insert(PREF.into(), json!({"provider": "sdcpp", "model": "z-image-turbo"})));
+    restore(&mut app).unwrap();
+    assert!(app.session.image_provider().is_none());
+    assert!(!fill_in_menu(&app));
+    let id = open_settings(&mut app);
+    assert_eq!(fields(&app, id)["provider"], "gemini");
 }
 
 /// File › Automate › Generative Batch… opens with any provider, says in the window when the model
@@ -1003,15 +966,15 @@ fn the_fill_window_chooses_the_provider_and_model() {
 #[test]
 fn the_batch_window_says_when_the_model_cannot_run_it() {
     let store = Store::default();
-    let mut app = two_providers(&store);
-    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+    let mut app = gemini_ready(&store);
+    switch_provider(&mut app, "gemini", "fills-only").unwrap();
     assert!(crate::menus::menu_items(&app).iter().any(|i| i.id == photocraft_engine::genai_cmds::BATCH));
     let ctx = egui::Context::default();
     let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
     app.ui.dialog_mut(id).unwrap().fields.insert("prompt".into(), json!("warmer"));
     let e = crate::dialogs::confirm(&mut app, id).unwrap_err();
     assert!(e.contains("doesn't edit images from instructions"), "{e}");
-    switch_provider(&mut app, "sdcpp", "qwen-image-2.1-turbo").unwrap();
+    switch_provider(&mut app, "gemini", "m").unwrap();
     let id = crate::menus::invoke(&mut app, &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap()["dialog"].as_u64().unwrap();
     let out = std::env::temp_dir().join(format!("photocraft-genai-batch-model-{}", std::process::id()));
     let f = &mut app.ui.dialog_mut(id).unwrap().fields;
@@ -1021,28 +984,29 @@ fn the_batch_window_says_when_the_model_cannot_run_it() {
     let _ = std::fs::remove_dir_all(out);
 }
 
-/// Renders both windows with the local server's Z-Image Turbo chosen, its notes showing
-/// (`GENAI_SNAPSHOT_DIR=… cargo test` saves a look).
+/// Renders both windows with Gemini and OpenAI set up and a model that only fills chosen, its
+/// notes showing (`GENAI_SNAPSHOT_DIR=… cargo test` saves a look).
 #[test]
 fn the_provider_pickers_render() {
     let store = Store::default();
+    store.borrow_mut().insert("openai".into(), SECRET.into());
     let store2 = store.clone();
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).with_max_steps(64).build_eframe(move |cc| {
         PhotocraftApp::setup_context(&cc.egui_ctx, Default::default());
-        let mut app = two_providers(&store2);
+        let mut app = gemini_ready(&store2);
         let id = open_prompt_dialog(&mut app);
         let doc = app.session.active().unwrap().doc.id.0;
         let f = &mut app.ui.dialog_mut(id).unwrap().fields;
         f.insert("mode".into(), json!("edit"));
         f.insert("references".into(), json!([{"document": doc}]));
-        switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+        switch_provider(&mut app, "gemini", "fills-only").unwrap();
         app
     });
     h.run_steps(6);
     h.get_by_label("Provider");
     h.get_by_label("Model");
-    h.get_by_label("z-image-turbo doesn't edit what is in the selection: it fills the selection from the description.");
-    h.get_by_label("z-image-turbo doesn't take reference images: they aren't sent.");
+    h.get_by_label("fills-only doesn't edit what is in the selection: it fills the selection from the description.");
+    h.get_by_label("fills-only doesn't take reference images: they aren't sent.");
     assert!(h.query_by_label("Edit selection").is_none());
     h.get_by_label("Empty: removes what is selected and continues the image through it.");
     assert!(h.query_by_label("The reference images are sent too, at most 1024 pixels on their long side.").is_none());
@@ -1052,12 +1016,11 @@ fn the_provider_pickers_render() {
     }
     let prompt = h.state().ui.dialogs[0].id;
     crate::dialogs::cancel(h.state_mut(), prompt).unwrap();
+    switch_provider(h.state_mut(), "openai", "gpt-image-2").unwrap();
     let ctx = h.ctx.clone();
     crate::menus::invoke(h.state_mut(), &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap();
     h.run_steps(6);
-    h.get_by_label(
-        "z-image-turbo doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.",
-    );
+    h.get_by_label("Start Batch");
     if let (Some(dir), Ok(img)) = (&dir, h.render()) {
         img.save(std::path::Path::new(dir).join("genai-batch-pickers.png")).unwrap();
     }
@@ -1068,7 +1031,8 @@ fn the_provider_pickers_render() {
 #[test]
 fn keeping_what_is_sent_is_off_until_ticked_in_the_settings() {
     let store = Store::default();
-    let mut app = two_providers(&store);
+    store.borrow_mut().insert("openai".into(), SECRET.into());
+    let mut app = gemini_ready(&store);
     assert!(app.session.generative_keep().is_none());
     let id = open_settings(&mut app);
     assert_eq!(fields(&app, id)["keep"], false);
@@ -1076,7 +1040,7 @@ fn keeping_what_is_sent_is_off_until_ticked_in_the_settings() {
     crate::dialogs::confirm(&mut app, id).unwrap();
     let kept = std::path::PathBuf::from(app.session.generative_keep().expect("on"));
     assert!(kept.ends_with(std::path::Path::new("Documents").join("PhotoCraft").join("generative")), "{kept:?}");
-    switch_provider(&mut app, "sdcpp", "z-image-turbo").unwrap();
+    switch_provider(&mut app, "openai", "gpt-image-2").unwrap();
     assert!(app.session.generative_keep().is_some(), "a provider switch keeps it");
     let mut next = PhotocraftApp::new(Session::new(), Services { genai: Some(services(&store)), ..Default::default() });
     next.session.prefs.edit(|p| p.dialogs = app.session.prefs().dialogs.clone());

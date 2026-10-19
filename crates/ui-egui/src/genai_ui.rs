@@ -59,7 +59,7 @@ pub struct Runtime {
     pending: pending::Pending,
     /// The files the last Generative Batch couldn't do: the batch dialog ticks only them next.
     batch_failed: Vec<String>,
-    /// The providers set up (a key saved, or the local server's settings), as of the last time
+    /// The providers set up (their key saved), as of the last time
     /// the Generative Fill or Batch window opened or the settings were saved: their Provider list.
     configured: Vec<String>,
 }
@@ -70,10 +70,16 @@ enum Preview {
     Texture(egui::TextureHandle),
 }
 
+/// The provider and model chosen. One no longer offered (the local server some test builds had)
+/// reads as none: off, until another is chosen.
 fn saved(app: &PhotocraftApp) -> (String, String) {
     let v = app.session.prefs().dialogs.get(PREF);
     let get = |k: &str| v.and_then(|v| v.get(k)).and_then(Value::as_str).unwrap_or("").to_owned();
-    (get("provider"), get("model"))
+    let provider = get("provider");
+    if !providers::list().iter().any(|(id, _)| *id == provider) {
+        return (String::new(), String::new());
+    }
+    (provider, get("model"))
 }
 
 /// Is Keep what is sent and returned on?
@@ -106,17 +112,12 @@ pub fn restore(app: &mut PhotocraftApp) -> Result<(), String> {
     let Some(services) = app.services.genai.as_ref() else {
         return Ok(());
     };
-    let key = if providers::needs_key(&provider) {
-        let key = (services.load_key)(&provider)?.and_then(|k| photocraft_genai::ApiKey::new(&k));
-        let Some(key) = key else {
-            app.session.set_image_provider(None);
-            return Err(crate::i18n::fmt(tl!("No API key is saved for {provider}."), &[("provider", &provider)]));
-        };
-        Some(key)
-    } else {
-        None
+    let key = (services.load_key)(&provider)?.and_then(|k| photocraft_genai::ApiKey::new(&k));
+    let Some(key) = key else {
+        app.session.set_image_provider(None);
+        return Err(crate::i18n::fmt(tl!("No API key is saved for {provider}."), &[("provider", &provider)]));
     };
-    let built = (services.provider)(&provider, &model, &providers::saved_options(app, &provider), key)?;
+    let built = (services.provider)(&provider, &model, &providers::saved_options(app, &provider), Some(key))?;
     app.session.set_image_provider(Some(built));
     Ok(())
 }
@@ -223,7 +224,7 @@ fn open_prompt(app: &mut PhotocraftApp) -> u64 {
 }
 
 /// How many variations a fill with the configured provider asks for: the last number chosen with
-/// that provider (kept per provider: a local model takes minutes an image, a service seconds),
+/// that provider (kept per provider: one may cost more an image than another),
 /// else its default.
 fn chosen_variations(app: &PhotocraftApp) -> u64 {
     let Some(p) = app.session.image_provider() else { return 3 };
@@ -237,17 +238,12 @@ fn prompt_capabilities(app: &PhotocraftApp) -> (bool, usize) {
     (caps.edit_in_place, caps.max_references.min(photocraft_genai::REFERENCES_LIMIT))
 }
 
-/// The providers set up for use: those with a key in the credential store, the local server once
-/// its settings were saved, and the one in use. Read when a window opens (the store, once).
+/// The providers set up for use: those with a key in the credential store, and the one in use.
+/// Read when a window opens (the store, once).
 fn set_up_providers(app: &PhotocraftApp) -> Vec<String> {
     let Some(services) = app.services.genai.as_ref() else { return Vec::new() };
     let (current, _) = saved(app);
-    let ready = |id: &str| {
-        if !providers::needs_key(id) {
-            return providers::has_saved_options(app, id);
-        }
-        (services.load_key)(id).ok().flatten().is_some_and(|k| !k.trim().is_empty())
-    };
+    let ready = |id: &str| (services.load_key)(id).ok().flatten().is_some_and(|k| !k.trim().is_empty());
     providers::list().into_iter().map(|(id, _)| id).filter(|id| !id.is_empty() && (*id == current || ready(id))).collect()
 }
 
@@ -756,10 +752,7 @@ pub fn confirm(app: &mut PhotocraftApp, f: &Map<String, Value>) -> Result<Value,
     let options = f.get("options").filter(|o| o.is_object()).cloned().unwrap_or_else(|| json!({}));
     if !provider.is_empty() {
         let services = app.services.genai.as_ref().ok_or_else(|| tl!("Generative AI needs the desktop app.").to_string())?;
-        if !providers::needs_key(&provider) {
-            // Check the settings (the server's address) before they are kept; nothing is contacted.
-            (services.provider)(&provider, &model, &options, None)?;
-        } else if let Some(key) = photocraft_genai::ApiKey::new(&typed) {
+        if let Some(key) = photocraft_genai::ApiKey::new(&typed) {
             // Check the provider builds (model id) before the key is stored.
             (services.provider)(&provider, &model, &options, Some(key.clone()))?;
             (services.save_key)(&provider, key.expose())?;

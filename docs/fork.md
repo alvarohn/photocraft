@@ -37,20 +37,18 @@ repository doesn't have, so merging it stays easy.
   dialog asks for 1 to 4 variations (remembered per provider), and besides Gemini, Generative AI
   Settings offers **OpenAI** (GPT Image 2.5 Sunburst and Flare, 2, 1.5, 1, 1 Mini; quality,
   working resolution up to 4K, output format, input fidelity, a cost estimate; up to 15 reference
-  images) and **a local stable-diffusion.cpp server** (`sd-server`, no key: Z-Image Turbo, Qwen
-  Image 2.1 Turbo, or another model; one request at a time, a small working size scaled back up,
-  progress by sampling step). New file for it: `crates/genai/src/sdcpp.rs`.
+  images). A local stable-diffusion.cpp server was a provider too for a day; the owner chose to
+  keep local models out of PhotoCraft (2026-10-19), so it was taken out (its code is in the
+  history: commit `c7876cb`).
 - **Provider and model in the fill windows**, the fork's own too (2026-10-18, after a first try
   on the owner's PC): Generative Fill and Generative Batch choose the provider and model at their
-  top, among those set up, kept as the settings' choice; Generative AI Settings keep the keys,
-  the server's address and the finer options. Each window says there what the model won't do of
-  what it asks (Edit, reference images, a batch). Each provider has its own turns, and Retry and
-  Generate More go only to the provider and model a fill was made with.
-- **Keep what is sent and returned, and room past the selection**, the fork's own too (2026-10-18,
-  after the first run of the local server): Generative AI Settings can keep each fill's request
-  and results in `Documents/PhotoCraft/generative/<date>/` (off by default; the
-  `PHOTOCRAFT_GENAI_DUMP` debugging aid made a setting); the local server's settings take a room
-  past the selection (0% by default) for the model to draw past it, hidden by the group's mask.
+  top, among those set up, kept as the settings' choice; Generative AI Settings keep the keys and
+  the finer options. Each window says there what the model won't do of what it asks (fewer
+  reference images). Each provider has its own turns, and Retry and Generate More go only to the
+  provider and model a fill was made with.
+- **Keep what is sent and returned**, the fork's own too (2026-10-18): Generative AI Settings can
+  keep each fill's request and results in `Documents/PhotoCraft/generative/<date>/` (off by
+  default; the `PHOTOCRAFT_GENAI_DUMP` debugging aid made a setting).
 - **Generative Batch** (File › Automate › Generative Batch…), the fork's own too (2026-10-18): the
   same edit for the open documents or a folder's images, results as JPEGs in an `IA` folder
   beside each image, *Same look in all* (the first result guides the others), stopping after two
@@ -88,14 +86,12 @@ repository doesn't have, so merging it stays easy.
 
 ## Known gaps (debt)
 
-What the 2026-10-18 additions (variations, OpenAI, the local server, Generative Batch) leave
-undone:
+What the 2026-10-18 additions (variations, OpenAI, Generative Batch) leave undone:
 
-- **No run against the real services from here.** OpenAI's and sd-server's request shapes are
-  tested against stand-ins (a fake transport; a stand-in sd-server on a local port through the
-  real transport), checked against OpenAI's API reference and stable-diffusion.cpp's server code,
-  but the cloud build can't reach the model hosts or use a key. First real runs: on the owner's
-  PC.
+- **No complete run against OpenAI yet.** Its request shape is tested against a fake transport
+  and checked against OpenAI's API reference, but the cloud build can't reach it or use a key.
+  The first real try on the owner's PC got as far as OpenAI's answer that the account had no
+  credit left: the key and its use are right; the request itself is still to be seen working.
 - **OpenAI moderation** isn't sent: the API takes it for edits only in its JSON form, and
   PhotoCraft sends the multipart form (the one the official SDKs send). Switching an edit to the
   JSON form (`images: [{image_url: data URL}]`) would allow it.
@@ -103,12 +99,6 @@ undone:
   2.5's taken as GPT Image 2's; none for auto, very high and maximum). The tokens the response
   reports (`usage`) aren't shown afterwards. Each variation is its own request, so the image sent
   is billed once per variation (`n` would bill it once).
-- **The local server isn't started by PhotoCraft**: the model, the device for each part
-  (`--backend`, `--max-vram`) and other flags stay in sd-server's command line (the splits that
-  ran Z-Image Turbo and Qwen Image 2.1 Turbo on a 2 GB GTX 1050 are in `generative-ai.md`). A server already
-  generating can't be stopped from PhotoCraft (the server refuses; its next job waits).
-- **Fill strength and room past the selection on local models** were chosen from the server's
-  code, not from measured results (defaults 100% and 0%); tune them on the owner's machine.
 - **Generative Batch** writes JPEG files only (no PNG, no "as layers in the open documents"), at
   each image's size; retrying is opening the dialog again (only the failed files are ticked), not
   a per-image Retry button; a batch is not listed in the fills' status-bar list (it shows as a

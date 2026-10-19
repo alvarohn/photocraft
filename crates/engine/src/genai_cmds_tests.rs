@@ -1128,43 +1128,15 @@ fn kept_requests_and_results_go_to_a_folder_per_day_and_fill() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// `Fake` whose model may draw `room` past the selection.
-struct Roomy(Arc<Fake>, f32);
-
-impl ImageProvider for Roomy {
-    fn info(&self) -> ProviderInfo {
-        self.0.info()
-    }
-    fn capabilities(&self) -> Capabilities {
-        self.0.capabilities()
-    }
-    fn edit(&self, r: &EditRequest) -> photocraft_genai::Result<GeneratedImage> {
-        self.0.edit(r)
-    }
-    fn mask_room(&self) -> f32 {
-        self.1
-    }
-}
-
 #[test]
-fn room_past_the_selection_widens_the_mask_sent_and_the_variation_keeps_all_it_drew() {
+fn each_variation_keeps_the_whole_area_returned_under_the_groups_mask() {
     let mut s = session(200, 200);
     s.execute("select.rect", json!({"x": 80, "y": 80, "width": 40, "height": 40})).unwrap();
-    let fake = Fake::new([255, 0, 0]);
-    // A quarter of the selection's 40 px: 10 px.
-    s.set_image_provider(Some(Arc::new(Roomy(fake.clone(), 0.25))));
+    s.set_image_provider(Some(Fake::new([255, 0, 0])));
     let r = s.execute(FILL, json!({"prompt": "a duck", "variations": 1})).unwrap();
-    let sent = fake.sent.lock().unwrap();
-    let mask = codecs::decode(&sent[0].mask).unwrap().convert(ChannelLayout::Rgba, CodecSample::U8);
-    let (x0, y0) = (r["bounds"][0].as_i64().unwrap() as i32, r["bounds"][1].as_i64().unwrap() as i32);
-    let at = |x: i32, y: i32| mask.data()[((y - y0) as usize * mask.width() as usize + (x - x0) as usize) * 4];
-    assert_eq!(at(100, 100), 255);
-    assert_eq!(at(125, 100), 255, "6 px past the selection: room to draw");
-    assert_eq!(at(135, 100), 0, "16 px past it: kept");
-    drop(sent);
-    // The layer's mask is still the selection; the variation holds everything returned, past it
-    // too, for painting the mask to show it.
     let id = r["layer"].as_u64().unwrap();
+    // Outside the selection the group's mask hides it; the variation still holds it, for painting
+    // the mask to show it.
     assert_eq!(rgb_at(&s, 125, 100), [255, 255, 255]);
     assert_eq!(variation_rgb(&s, id, 0, 125, 100), [255, 0, 0]);
     assert_eq!(variation_rgb(&s, id, 0, 135, 100), [255, 0, 0]);

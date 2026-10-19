@@ -4259,22 +4259,6 @@ navigator	Zoom	Zoom
 	GPT Image 2.5 Sunburst (most faithful edits)	GPT Image 2.5 Sunburst (ediciones más fieles)
 	GPT Image 2.5 Flare (faster)	GPT Image 2.5 Flare (más rápido)
 	GPT Image 1 Mini (cheapest)	GPT Image 1 Mini (más barato)
-	stable-diffusion.cpp (local)	stable-diffusion.cpp (local)
-	Qwen Image 2.1 Turbo (edits, references)	Qwen Image 2.1 Turbo (edita, referencias)
-	Other model	Otro modelo
-	Server address	Dirección del servidor
-	Steps	Pasos
-	0: the server's own setting	0: lo que tenga configurado el servidor
-	Guidance (CFG)	Guía (CFG)
-	Fill strength	Intensidad del relleno
-	How much of the selected area Fill makes anew; 100%: all of it	Cuánto del área seleccionada rehace Rellenar; 100 %: toda
-	Working size	Tamaño de trabajo
-	It edits from instructions and takes reference images	Edita a partir de instrucciones y acepta imágenes de referencia
-	Start sd-server with the model first; PhotoCraft sends it one request at a time. Each image takes as long as the server needs (minutes on a laptop), at the working size, scaled up to the selection.	Inicia primero sd-server con el modelo; PhotoCraft le envía una solicitud por vez. Cada imagen tarda lo que necesite el servidor (minutos en una portátil), al tamaño de trabajo, y se agranda hasta la selección.
-	Qwen Image 2.1 Turbo is released under the Qwen Research licence: for non-commercial use only.	Qwen Image 2.1 Turbo se publica con la licencia Qwen Research: solo para uso no comercial.
-	Z-Image Turbo (Apache 2.0) fills selections from a description; it doesn't edit from instructions or take reference images.	Z-Image Turbo (Apache 2.0) rellena selecciones a partir de una descripción; no edita a partir de instrucciones ni acepta imágenes de referencia.
-	Nothing is sent until you run Generative Fill. Each time you do, PhotoCraft sends the selected area and the image around it, a black-and-white mask of the selection, and your prompt to the stable-diffusion.cpp server at {url}, without a key. At 127.0.0.1 (this computer) nothing leaves it.	No se envía nada hasta que ejecutas el relleno generativo. Cada vez que lo haces, PhotoCraft envía al servidor de stable-diffusion.cpp en {url} el área seleccionada y la imagen que la rodea, una máscara en blanco y negro de la selección y tu descripción, sin clave. En 127.0.0.1 (este equipo) nada sale de él.
-	Each Generative Fill sends one request per variation (1 to 4, chosen in its dialog), one after another.	Cada relleno generativo envía una solicitud por variación (de 1 a 4, a elegir en su cuadro de diálogo), una después de otra.
 # Generative Batch
 	Generative Batch…	Lote generativo…
 	Generative Batch	Lote generativo
@@ -4307,5 +4291,3 @@ navigator	Zoom	Zoom
 	{model} doesn't edit images from instructions, which Generative Batch needs: choose a model that does, such as Gemini, OpenAI or Qwen Image 2.1 Turbo.	{model} no edita imágenes a partir de instrucciones, y el lote generativo lo necesita: elige un modelo que lo haga, como Gemini, OpenAI o Qwen Image 2.1 Turbo.
 	Keep what is sent and returned	Guardar lo que se envía y lo que vuelve
 	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	La imagen, la máscara, las imágenes de referencia, el prompt y los resultados de cada relleno se guardan en {dir}, en una carpeta por día (UTC), para comparar y diagnosticar.
-	Room past the selection	Espacio fuera de la selección
-	How far past the selection the model may draw, as a share of the selection's size: what it draws there is in the layer, hidden by its mask (paint the mask to show it). 0%: only inside the selection, which matches its edges best.	Cuánto puede dibujar el modelo fuera de la selección, como proporción de su tamaño: lo que dibuje ahí queda en la capa, oculto por su máscara (pinta la máscara para mostrarlo). 0 %: solo dentro de la selección, lo que mejor encaja con sus bordes.

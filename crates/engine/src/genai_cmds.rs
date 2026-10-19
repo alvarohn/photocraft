@@ -141,7 +141,7 @@ pub(crate) struct GenState {
     fills: Vec<Fill>,
     next_fill: u64,
     /// Turns at each provider (by id), shared by every fill, Generate More and batch sent to it:
-    /// a local server's one turn is no reason for a service's fills to wait.
+    /// one provider's line is no reason for another's fills to wait.
     turns: std::collections::HashMap<&'static str, Arc<queue::Turns>>,
     /// Where each fill's request and results are kept (Generative AI Settings › Keep what is sent
     /// and returned), if anywhere.
@@ -236,9 +236,6 @@ struct FillInput {
     canvas: Rect,
     area: Rect,
     size: (u32, u32),
-    /// How far past the selection the mask sent reaches, in pixels at the request size
-    /// ([`ImageProvider::mask_room`]).
-    room: u32,
     mode: EditMode,
     prompt: String,
     name: String,
@@ -436,13 +433,10 @@ fn encode_rgba(px: Vec<u8>, w: u32, h: u32) -> Result<Vec<u8>> {
 /// replaced, as Photoshop's fill doesn't, so it can't paint it back. A flat grey hole was tried
 /// first: Gemini read it as an object (a grey box, a lamp) and drew it in. In [`EditMode::Edit`]
 /// it is sent as it is, since the provider is to change what is there.
-fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mode: EditMode, room: u32) -> Result<(Vec<u8>, Vec<u8>, Reference)> {
+fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mode: EditMode) -> Result<(Vec<u8>, Vec<u8>, Reference)> {
     let r = Rect::from_xywh(0, 0, w, h);
     let rgba = image.convert(PixelFormat::new(ColorMode::Rgb, SampleType::U8, true)).to_interleaved(r);
     let coverage: Vec<f32> = scaled(sel, area, w, h).read_region(r).into_iter().map(|v| v.clamp(0.0, 1.0)).collect();
-    // The mask sent reaches `room` pixels past the selection (the provider may draw there, and the
-    // colour match learns only from what it was to keep); the placeholder stays in the selection.
-    let sent = if room > 0 { photocraft_algo::selection::expand(&coverage, w as usize, h as usize, room as f32) } else { coverage.clone() };
     let mut original = Vec::with_capacity(coverage.len() * 3);
     for px in rgba.as_chunks::<4>().0 {
         let a = f32::from(px[3]) / 255.0;
@@ -463,10 +457,10 @@ fn request_images(image: &Surface, sel: &Surface, area: Rect, w: u32, h: u32, mo
             cleared.push((v * 255.0).round().clamp(0.0, 255.0) as u8);
         }
         cleared.push(255);
-        let g = (sent.get(i).copied().unwrap_or(m) * 255.0).round() as u8;
+        let g = (m * 255.0).round() as u8;
         mask.extend_from_slice(&[g, g, g, 255]);
     }
-    let reference = Reference { original, coverage: sent, w, h };
+    let reference = Reference { original, coverage, w, h };
     Ok((encode_rgba(cleared, w, h)?, encode_rgba(mask, w, h)?, reference))
 }
 
@@ -1133,18 +1127,14 @@ fn fill(s: &mut Session, p: &Value) -> Result<Value> {
     let (w, h) = provider.request_size(w, h);
     let (w, h) = (w.clamp(1, UPLOAD_SIDE), h.clamp(1, UPLOAD_SIDE));
     let (doc_id, anchor) = (doc.id, st.active_layer);
-    let bounds = sel.content_bounds().intersect(&canvas);
-    // The provider's room past the selection, in pixels at the request size.
-    let room = f64::from(provider.mask_room().clamp(0.0, 1.0)) * f64::from(bounds.width().max(bounds.height())) * f64::from(w) / f64::from(area.width().max(1));
     let input = FillInput {
         name: layer_name(&prompt),
-        bounds,
+        bounds: sel.content_bounds().intersect(&canvas),
         doc,
         sel,
         canvas,
         area,
         size: (w, h),
-        room: (room.round() as u32).min(UPLOAD_SIDE),
         mode,
         prompt,
         references,
@@ -1219,7 +1209,7 @@ fn fill_work(
     let (w, h) = input.size;
     ctx.progress(0.05, "Preparing image");
     let (image, mask, reference) =
-        request_images(&scaled(&srgb_composite(&input.doc, input.area)?, input.area, w, h), &input.sel, input.area, w, h, input.mode, input.room)?;
+        request_images(&scaled(&srgb_composite(&input.doc, input.area)?, input.area, w, h), &input.sel, input.area, w, h, input.mode)?;
     ctx.check()?;
     if !input.references.is_empty() {
         ctx.progress(0.1, "Preparing reference images");
@@ -1436,7 +1426,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generative Fill…",
             menu: &["Edit"],
             shortcut: None,
-            params: r#"{"prompt":str?,"variations":1..4?,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing (`variations` defaults to the provider's: 3 for a cloud service, 1 for a local model). `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most the provider's: 4 for Gemini and local models, 15 for OpenAI) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to the provider at a time (one for a local server; the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
+            params: r#"{"prompt":str?,"variations":1..4?,"mode":"fill"|"edit"="fill","references":[path|{"path":str}|{"document":id}]?,"area":uint?} fills the selection through the configured provider: a new group masked by the selection holds one layer per variation, the first showing (`variations` defaults to the provider's: 3). `fill` blurs the selected area out first, so the provider fills a hole (an empty prompt continues the surrounding image through it, removing what was there); `edit` sends it as it is and changes only what the prompt asks for (a prompt is required). `references` (at most the provider's: 4 for Gemini, 15 for OpenAI) are images from files or open documents the provider should follow. `area` fills only that one of the selection's separate areas (0 = the first, see layer.generative.areas). Started in the background it doesn't lock the document: it returns {job, fill} at once, at most 5 fills talk to each provider at a time (the rest wait their turn), and the group lands above the layer that was active when it started, without becoming active (layer.generative.fills lists those still running or failed). Sends the selected area, its surroundings and any reference images to that provider, once per variation."#,
             enabled: fill_enabled,
             run: fill,
             journal: true,
@@ -1456,7 +1446,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Generate More",
             menu: &[],
             shortcut: None,
-            params: r#"{"count":1..4?,"layer":id?} asks the provider for more variations of the active generative layer, with the same image, mask and prompt, and adds them to it. Sends that area to the provider again."#,
+            params: r#"{"count":1..4?,"layer":id?} asks the provider for more variations of the active generative layer, with the same image, mask and prompt, and adds them to it. Sends that area again to the provider and model it was made with."#,
             enabled: more_enabled,
             run: more,
             journal: true,
@@ -1466,7 +1456,7 @@ pub fn specs() -> Vec<CommandSpec> {
             label: "Retry Generative Fill",
             menu: &[],
             shortcut: None,
-            params: r#"{"fill":id} sends a Generative Fill that failed again, as it was started (the same area, prompt and references, from the document as it was then). Sends that area to the provider again."#,
+            params: r#"{"fill":id} sends a Generative Fill that failed again, as it was started (the same area, prompt and references, from the document as it was then). Sends that area again to the provider and model it was made with."#,
             enabled: retry_enabled,
             run: retry,
             journal: false,
