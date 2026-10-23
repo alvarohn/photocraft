@@ -3364,7 +3364,6 @@ curves	Smooth	Сгладить
 	Waiting ({n})	В очереди ({n})
 	Waiting: {name}	В очереди: {name}
 	Retry	Повторить
-	Failed	Ошибка
 @plural	{n} generating|{n} generating	{n} создаётся|{n} создаются|{n} создаются
 @plural	{n} waiting|{n} waiting	{n} в очереди|{n} в очереди|{n} в очереди
 @plural	{n} failed|{n} failed	{n} с ошибкой|{n} с ошибкой|{n} с ошибкой
@@ -3421,9 +3420,6 @@ curves	Smooth	Сгладить
 	Decrease Brush Size	Уменьшить размер кисти
 	Increase Brush Size	Увеличить размер кисти
 	{path}: the path is not valid Unicode; save under another name.	{path}: путь не является допустимым Unicode; сохраните под другим именем.
-	Replace	Заменить
-	{name} was changed by another app after it was opened or saved here.	Файл {name} был изменён другим приложением после того, как его открыли или сохранили здесь.
-	Replace it with this document, or cancel and use File › Save As to keep both.	Замените его этим документом или отмените и используйте Файл › Сохранить как, чтобы сохранить оба.
 
 
 # Dynamic UI labels (fourth pass): filter and adjustment parameters, Camera Raw panels,
@@ -3682,7 +3678,6 @@ curves	Smooth	Сгладить
 	Day For Night	День как ночь
 	De-Interlace	Устранение чересстрочности
 	Decrease Brush Hardness	Уменьшить жёсткость кисти
-	Decrease Brush Size	Уменьшить размер кисти
 	Decrease Type Size	Уменьшить размер текста
 	Decrease Type Size by 10	Уменьшить размер текста на 10
 	Deep	Глубокий
@@ -3978,7 +3973,6 @@ curves	Smooth	Сгладить
 	Resize Windows to Fit	Подгонять размер окон
 
 	EXR	EXR
-	Increase Brush Size	Увеличить размер кисти
 	Increase Type Size	Увеличить размер текста
 	Increase Type Size by 10	Увеличить размер текста на 10
 	Indent first line	Отступ первой строки
@@ -4327,7 +4321,6 @@ curves	Smooth	Сгладить
 	Restart	Перезапустить
 	Restart Required	Требуется перезапуск
 	Resume	Продолжить
-	Retry	Повторить
 	Rgb	RGB
 	Ridges	Гребни
 	Right Diagonal	Правая диагональ

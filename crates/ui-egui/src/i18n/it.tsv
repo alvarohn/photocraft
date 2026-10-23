@@ -4566,8 +4566,6 @@ shape	Appearance	Aspetto
 	Keep what is sent and returned	Conserva ciò che viene inviato e ricevuto
 	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	L’immagine, la maschera, le immagini di riferimento, la descrizione e i risultati di ogni riempimento vengono salvati in {dir}, in una cartella al giorno (UTC), per confrontarli e diagnosticare problemi.
 	{path}: the path is not valid Unicode; save under another name.	{path}: il percorso non è Unicode valido; salva con un altro nome.
-	{name} was changed by another app after it was opened or saved here.	{name} è stato modificato da un'altra app dopo essere stato aperto o salvato qui.
-	Replace it with this document, or cancel and use File › Save As to keep both.	Sostituiscilo con questo documento, oppure annulla e usa File › Salva con nome per tenerli entrambi.
 	Demosaic	Demosaicizzazione
 	How the camera's colour filter mosaic is filled in. It is applied when the file opens; the preview shows the method it was opened with.	Come viene completato il mosaico del filtro colore della fotocamera. Si applica all'apertura del file; l'anteprima mostra il metodo con cui è stato aperto.
 	AHD (adaptive homogeneity)	AHD (omogeneità adattiva)

@@ -3460,8 +3460,6 @@ curves	Smooth	Glätten
 	Keep what is sent and returned	Gesendetes und Empfangenes aufbewahren
 	Each fill's image, mask, reference images, prompt and results are saved in {dir}, in a folder a day (UTC), to compare and diagnose.	Bild, Maske, Referenzbilder, Beschreibung und Ergebnisse jeder Füllung werden in {dir} gespeichert, in einem Ordner pro Tag (UTC), zum Vergleichen und zur Fehlersuche.
 	{path}: the path is not valid Unicode; save under another name.	{path}: Der Dateipfad enthält ungültige Zeichen. Speichere unter einem anderen Namen.
-	{name} was changed by another app after it was opened or saved here.	{name} wurde von einer anderen App geändert, nachdem es hier geöffnet oder gespeichert wurde.
-	Replace it with this document, or cancel and use File › Save As to keep both.	Ersetze die Datei durch dieses Dokument oder brich ab und nutze Datei › Speichern unter, um beide zu behalten.
 	Demosaic	Demosaicing
 	How the camera's colour filter mosaic is filled in. It is applied when the file opens; the preview shows the method it was opened with.	Wie das Farbfiltermosaik der Kamera aufgefüllt wird. Es wird beim Öffnen der Datei angewendet; die Vorschau zeigt die Methode, mit der sie geöffnet wurde.
 	AHD (adaptive homogeneity)	AHD (adaptive Homogenität)

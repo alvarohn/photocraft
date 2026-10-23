@@ -3784,7 +3784,6 @@ curves	Smooth	Lisser
 	Exporting…	Exportation…
 	Extrude	Extruder
 	Faded Film	Film délavé
-	Failed	Échec
 	Failed to open file	Échec de l'ouverture du fichier
 	Failed to save file	Échec de l'enregistrement du fichier
 	Fallback: {reason}	Repli : {reason}
@@ -4197,7 +4196,6 @@ curves	Smooth	Lisser
 	Restart	Redémarrer
 	Restart Required	Redémarrage requis
 	Resume	Reprendre
-	Retry	Réessayer
 	Rgb	RVB
 	Ridges	Crêtes
 	Right Diagonal	Diagonale droite
