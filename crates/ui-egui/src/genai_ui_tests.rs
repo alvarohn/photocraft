@@ -385,7 +385,9 @@ fn the_dialogs_render() {
     h.get_by_label("Remove Key");
     h.get_by_label("Get a Gemini API key from Google AI Studio");
     let dir = std::env::var_os("GENAI_SNAPSHOT_DIR");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-settings.png")).unwrap();
     }
     let id = settings_dialog(h.state()).unwrap();
@@ -397,7 +399,9 @@ fn the_dialogs_render() {
     h.get_by_label("Generate");
     h.get_by_label("Fill selection");
     h.get_by_label("Add Reference…");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-prompt.png")).unwrap();
     }
     // Edit, with the document itself as a reference.
@@ -434,7 +438,9 @@ fn the_dialogs_render() {
     h.state_mut().ui.tool = crate::state::Tool::RectMarquee;
     h.run_steps(6);
     h.get_by_label("Generative Fill…");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-options-bar.png")).unwrap();
     }
 }
@@ -517,7 +523,9 @@ fn the_batch_dialog_renders() {
     h.get_by_label("Start Batch");
     h.get_by_label("Same look in all");
     h.get_by_label("Open documents");
-    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+    if let Some(dir) = std::env::var_os("GENAI_SNAPSHOT_DIR")
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(&dir).join("genai-batch.png")).unwrap();
     }
 }
@@ -539,7 +547,9 @@ fn openai_settings_render() {
     h.get_by_label("Get an OpenAI API key");
     h.get_by_label("Working resolution");
     h.get_by_label("Quality (compression)");
-    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+    if let Some(dir) = std::env::var_os("GENAI_SNAPSHOT_DIR")
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(&dir).join("genai-settings-openai.png")).unwrap();
     }
 }
@@ -575,7 +585,9 @@ fn properties_show_the_variations() {
     assert_eq!(shown(&h), [true, false, false]);
     h.get_by_label("Variations");
     h.get_by_label("Generate More");
-    if let (Some(dir), Ok(img)) = (std::env::var_os("GENAI_SNAPSHOT_DIR"), h.render()) {
+    if let Some(dir) = std::env::var_os("GENAI_SNAPSHOT_DIR")
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(&dir).join("genai-variations.png")).unwrap();
     }
     // The Layers panel lists "Variation 3" too; the thumbnail is the one in Properties, above it.
@@ -1011,7 +1023,9 @@ fn the_provider_pickers_render() {
     h.get_by_label("Empty: removes what is selected and continues the image through it.");
     assert!(h.query_by_label("The reference images are sent too, at most 1024 pixels on their long side.").is_none());
     let dir = std::env::var_os("GENAI_SNAPSHOT_DIR");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-prompt-pickers.png")).unwrap();
     }
     let prompt = h.state().ui.dialogs[0].id;
@@ -1021,7 +1035,9 @@ fn the_provider_pickers_render() {
     crate::menus::invoke(h.state_mut(), &ctx, photocraft_engine::genai_cmds::BATCH, json!({})).unwrap();
     h.run_steps(6);
     h.get_by_label("Start Batch");
-    if let (Some(dir), Ok(img)) = (&dir, h.render()) {
+    if let Some(dir) = &dir
+        && let Ok(img) = h.render()
+    {
         img.save(std::path::Path::new(dir).join("genai-batch-pickers.png")).unwrap();
     }
 }

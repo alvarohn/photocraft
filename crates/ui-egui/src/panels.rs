@@ -2882,7 +2882,11 @@ fn layers(app: &mut PhotocraftApp, ui: &mut egui::Ui) {
             let mut drawn: Vec<(LayerId, Rect)> = Vec::new();
             // Where Generative Fills still generating will land; one anchored to a row that isn't
             // shown (Isolate Layers, the layer filter) is listed at the top.
-            let shown: Vec<_> = rows.iter().copied().filter(|&(_, l)| photocraft_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) && filter.shows(l)).collect();
+            let shown: Vec<_> = rows
+                .iter()
+                .copied()
+                .filter(|&(_, l)| photocraft_engine::select_extra_cmds::isolation_shows(&doc, &isolated, l.id) && filter.shows(l))
+                .collect();
             crate::genai_ui::layer_rows_unplaced(app, ui, doc.id, &shown);
             for &(depth, l) in &rows {
                 // Select › Isolate Layers.
