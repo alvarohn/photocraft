@@ -143,10 +143,13 @@ changes on top of some official commit, and every run merges the current officia
 Expected conflicts are resolved by the script:
 
 - Markdown docs take the official text;
-- `Cargo.lock` takes the official lockfile, then `cargo metadata` adds the fork's extra crates;
+- `Cargo.lock` takes the official lockfile, then `cargo metadata` adds the fork's extra crates.
+  The same happens after a merge without a lockfile conflict when `cargo --locked` would refuse
+  the result: the fork's crates take the workspace version, so every official version bump left
+  their entries behind (what stopped the 2026-10-20 17:30 run);
 - translation tables (`crates/ui-egui/src/i18n/*.tsv`) keep both sides (`.gitattributes`), and
   lines both sides added identically are dropped once (duplicates the official file already has
-  stay);
+  stay); a string both sides translated differently keeps the official translation;
 - Rust and TOML files where both sides only added lines at the same place (a new match arm in
   `dialogs.rs`, a `mod` line) keep both (`scripts/fork/union-additions.py`, diff3 markers with an
   empty base). The build that follows catches a union that doesn't compile, so nothing broken is
@@ -155,7 +158,16 @@ Expected conflicts are resolved by the script:
 Any other conflict stops the run, opens an issue in the fork (if issues are enabled) and fails the
 workflow, so GitHub emails the owner. Fix it by merging `upstream/main` into `main` by hand,
 resolving those files, and pushing; the next run publishes again. The installed app keeps working
-in the meantime.
+in the meantime. Issues are off in this fork (a fork starts with them off), so today the failed
+run's email (Settings › Notifications › Actions) is the only notice.
+
+When `git merge-base --all main upstream/main` lists more than one commit, git merges against a
+virtual base and can report conflicts in files the fork never touched (2026-10-23: five bases,
+after official commits the fork had merged came back into the official history by another path;
+git 2.43 reported 270 conflicted files). Merge by hand against the official commit `main` last merged, where the fork's
+diff is only its own files: `git merge-tree --write-tree --merge-base=<that commit> main
+upstream/main` shows the real conflicts (two that day); the merge commit `main` gets then has
+`upstream/main` as a parent, so the next runs have a single base again.
 
 The workflow also turns off the official repository's own workflows in the fork (they need the
 official signing secrets and would only fail here), and re-enables itself each run so GitHub doesn't
