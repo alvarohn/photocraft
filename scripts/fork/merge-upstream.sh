@@ -42,8 +42,7 @@ for path in sys.argv[2:]:
             theirs = official_by_key.get(key(line), set())
             if theirs and line not in theirs and theirs & present:
                 continue
-        # Entries without a context start with a tab.
-        if line.startswith("\t") and line.count("\t") >= 2 and line not in allowed:
+        if entry(line) and line not in allowed:
             if line in seen:
                 continue
             seen.add(line)
@@ -62,15 +61,19 @@ PY
 # The fork's crates take the workspace version, so an official version bump leaves their
 # Cargo.lock entries behind even when the lockfile merges without a conflict (cargo --locked
 # then refuses it). The official lockfile again, plus what the fork's crates need.
+# `cargo update --workspace` reads only the registry index (no crate downloads) and keeps every
+# locked version the workspace's own crates don't force to change.
 sync_lock() {
-  if cargo metadata --locked --format-version 1 > /dev/null 2>&1; then
+  if cargo update --workspace --locked > /dev/null 2>&1; then
     return
   fi
   git show "$ref:Cargo.lock" > Cargo.lock
-  cargo metadata --format-version 1 > /dev/null
-  git add Cargo.lock
-  git commit -q -m "Cargo.lock: the official lockfile plus the fork's crates"
-  echo "re-resolved Cargo.lock"
+  cargo update --workspace
+  if ! git diff --quiet -- Cargo.lock; then
+    git add Cargo.lock
+    git commit -q -m "Cargo.lock: the official lockfile plus the fork's crates"
+    echo "re-resolved Cargo.lock"
+  fi
 }
 
 here=$(cd "$(dirname "$0")" && pwd)
