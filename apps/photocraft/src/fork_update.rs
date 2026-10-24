@@ -27,9 +27,27 @@ const TAG_PREFIX: &str = "gf-";
 const API: &str = "https://api.github.com/repos";
 /// API answers (release lists) are small; anything bigger is not GitHub.
 const MAX_API_BYTES: u64 = 4 << 20;
+/// This fork's repository and build id, set by its release workflow.
+const FORK_BUILD: Option<(&str, &str)> = match (option_env!("PHOTOCRAFT_FORK_REPO"), option_env!("PHOTOCRAFT_FORK_BUILD")) {
+    (Some(repo), Some(build)) => Some((repo, build)),
+    _ => None,
+};
+
+/// This fork's builds take their updates from this fork's releases ([`start`]). The official
+/// release check (at startup and Help › Check for Updates) would offer the official build, without
+/// Generative Fill, so it is off in them, as in the official Flatpak builds.
+pub fn hand_over_updates(updates: &mut photocraft_engine::updates_cmds::Updates) {
+    hand_over(updates, FORK_BUILD.is_some());
+}
+
+fn hand_over(updates: &mut photocraft_engine::updates_cmds::Updates, fork_build: bool) {
+    if fork_build {
+        updates.check = None;
+    }
+}
 
 pub fn start(ctx: &egui::Context) {
-    let (Some(repo), Some(build)) = (option_env!("PHOTOCRAFT_FORK_REPO"), option_env!("PHOTOCRAFT_FORK_BUILD")) else { return };
+    let Some((repo, build)) = FORK_BUILD else { return };
     if !cfg!(target_os = "windows") || std::env::var_os("PHOTOCRAFT_NO_UPDATE_CHECK").is_some() {
         return;
     }
@@ -325,6 +343,20 @@ mod tests {
         assert!(parse_release(&json!({"tag_name": "gf-nope", "assets": []})).is_none());
         assert!(parse_release(&json!({"tag_name": 3})).is_none());
         assert!(parse_release(&json!(null)).is_none());
+    }
+
+    #[test]
+    fn fork_builds_hand_the_official_release_check_over() {
+        let transport = || -> photocraft_engine::updates_cmds::CheckFn { Box::new(|| Err("unused".into())) };
+        let mut official = photocraft_engine::updates_cmds::Updates { check: Some(transport()), ..Default::default() };
+        hand_over(&mut official, false);
+        assert!(official.check.is_some());
+        let mut fork = photocraft_engine::updates_cmds::Updates { check: Some(transport()), ..Default::default() };
+        hand_over(&mut fork, true);
+        assert!(fork.check.is_none());
+        // Tests aren't built by the release workflow, so this build keeps the official check.
+        hand_over_updates(&mut official);
+        assert!(official.check.is_some());
     }
 
     #[test]

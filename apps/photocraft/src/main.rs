@@ -903,6 +903,7 @@ fn main() -> eframe::Result {
                 photocraft_ui_egui::notices::post(&mut app, "Portable mode is off", vec![w.clone()], false, None);
             }
             // This fork's own builds: offer newer releases and keep their source code (docs/fork.md).
+            fork_update::hand_over_updates(&mut app.session.updates);
             fork_update::start(&cc.egui_ctx);
             Ok(Box::new(app))
         }),

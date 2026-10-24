@@ -82,7 +82,11 @@ repository doesn't have, so merging it stays easy.
   starts the installer (closing PhotoCraft first, which asks about unsaved work). The source packs
   of the running build and of every update go to `Documents\PhotoCraft\codigo-fuente`, newest 3
   kept. Only builds made by the workflow (which sets `PHOTOCRAFT_FORK_REPO` and
-  `PHOTOCRAFT_FORK_BUILD`) do this; set `PHOTOCRAFT_NO_UPDATE_CHECK=1` to skip it.
+  `PHOTOCRAFT_FORK_BUILD`) do this; set `PHOTOCRAFT_NO_UPDATE_CHECK=1` to skip it. Those builds
+  also turn off the official release check (2026-10-24, from the official integration batch #8663:
+  at startup and Help › Check for Updates), which would offer the official build without
+  Generative Fill; it stays on in every other build (one line in `main.rs`,
+  `fork_update::hand_over_updates`).
 
 ## Known gaps (debt)
 
