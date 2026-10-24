@@ -79,6 +79,9 @@ sync_github_name = true
 [people.maxm11]
 sync_github_name = true
 
+[people.mweinbach]
+sync_github_name = true
+
 [people.skraus2]
 sync_github_name = true
 
@@ -258,9 +261,6 @@ sync_github_name = true
 [people.batuhangozegu]
 real_name = "Batuhan Gözegü"
 sync_github_name = false
-
-[people.ronibalthazar]
-sync_github_name = true
 
 [people.drunkeninja42]
 real_name = "Kushagra Sharma"

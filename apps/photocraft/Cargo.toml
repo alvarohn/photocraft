@@ -42,9 +42,10 @@ arboard = { version = "3.6", features = ["wayland-data-control"] }
 open = "5"
 # Reads the saved window layout (eframe persistence) to drop values that would abort startup.
 ron = "0.12"
-# Generative AI provider requests (genai.rs): blocking HTTPS with rustls, used only after the
-# user sets up a provider. No gzip, cookies or proxies. Pinned exactly: review the diff before bumping.
-ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
+# Fork: Generative AI provider requests (genai.rs) and this fork's updates (fork_update.rs) use
+# it too, with rustls and no gzip, cookies or proxies; the version follows the official one.
+# Background release checks; HTTPS with Rust TLS, no async runtime.
+ureq = { version = "3.4", default-features = false, features = ["rustls", "platform-verifier"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Safe CoreGraphics bindings, compatible with the existing macOS 11 deployment target.
