@@ -347,11 +347,15 @@ mod tests {
 
     #[test]
     fn fork_builds_hand_the_official_release_check_over() {
-        let transport = || -> photocraft_engine::updates_cmds::CheckFn { Box::new(|| Err("unused".into())) };
-        let mut official = photocraft_engine::updates_cmds::Updates { check: Some(transport()), ..Default::default() };
+        let with_transport = || {
+            let mut updates = photocraft_engine::updates_cmds::Updates::default();
+            updates.check = Some(Box::new(|| Err("unused".into())));
+            updates
+        };
+        let mut official = with_transport();
         hand_over(&mut official, false);
         assert!(official.check.is_some());
-        let mut fork = photocraft_engine::updates_cmds::Updates { check: Some(transport()), ..Default::default() };
+        let mut fork = with_transport();
         hand_over(&mut fork, true);
         assert!(fork.check.is_none());
         // Tests aren't built by the release workflow, so this build keeps the official check.
